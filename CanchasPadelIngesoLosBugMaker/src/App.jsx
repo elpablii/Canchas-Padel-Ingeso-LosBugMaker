@@ -1,28 +1,38 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import './App.css';
+
 
 function App() {
-  const [count, setCount] = useState(0)
-
+ 
   return (
     <>
-      
       <h1>Canchas Pádel Ucenin</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          contador es {count}
-        </button>
-        <p>
-          FrontEnd en construccion
+
+      {/* Este div puede ser el contenedor principal para el contenido de la página de inicio */}
+      <div className="main-content">
+        <h2>Bienvenido/a</h2>
+        <p>Gestiona tus reservas de pádel de forma fácil y rápida.</p>
+
+        {/* Contenedor para los botones de autenticación */}
+        <div className="auth-buttons">
+          {/* Botón para iniciar sesión */}
+          <button onClick={() => console.log('Clic en Iniciar Sesión')}>
+            Iniciar Sesión
+          </button>
+
+          {/* Botón para registrarse */}
+          <button onClick={() => console.log('Clic en Registrarse')}>
+            Registrarse
+          </button>
+        </div>
+
+        {/* Mensaje de estado o pie de página */}
+        <p className="status-message">
+          FrontEnd en construcción. ¡Se agregarán más funciones pronto!
         </p>
       </div>
-      <p className="read-the-docs">
-        Se va a ir agregando nuevas funciones a medida que pasen los dias
-      </p>
+
     </>
-  )
+  );
 }
 
-export default App
+export default App;

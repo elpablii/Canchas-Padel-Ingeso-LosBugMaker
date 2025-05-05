@@ -1,42 +1,82 @@
+/* Estilos generales para el contenedor principal de la aplicación */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  max-width: 1280px; /* Mantiene el ancho máximo */
+  margin: 0 auto;    /* Centra el contenedor */
+  padding: 2rem;     /* Añade padding alrededor */
+  text-align: center; /* Centra el texto dentro del contenedor */
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Estilos para el contenedor principal de la App */
+.App {
+  /* Puedes añadir estilos generales para el fondo, tipografía, etc. aquí */
+  font-family: sans-serif; /* Ejemplo: usar una fuente sans-serif */
+  color: #333; /* Ejemplo: color de texto oscuro */
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* Estilos para el encabezado */
+.App-header h1 {
+  color: #007bff; /* Ejemplo: color azul para el título */
+  margin-bottom: 1rem; /* Espacio debajo del título */
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+/* Estilos para el contenido principal (Bienvenido, botones, etc.) */
+.main-content {
+  margin-top: 2rem; /* Espacio arriba del contenido principal */
+  padding: 1.5rem; /* Padding dentro del contenido principal */
+  border: 1px solid #ddd; /* Ejemplo: un borde ligero */
+  border-radius: 8px; /* Bordes redondeados */
+  background-color: #f9f9f9; /* Ejemplo: un fondo ligeramente gris */
 }
 
-.card {
-  padding: 2em;
+.main-content h2 {
+  color: #555; /* Ejemplo: color para el subtítulo */
+  margin-bottom: 1rem;
 }
 
-.read-the-docs {
-  color: #888;
+.main-content p {
+  margin-bottom: 1.5rem; /* Espacio debajo de los párrafos */
+  line-height: 1.5; /* Espaciado de línea */
+}
+
+
+/* Estilos para el contenedor de los botones de autenticación */
+.auth-buttons {
+  display: flex; /* Usa flexbox para alinear los botones */
+  justify-content: center; /* Centra los botones horizontalmente */
+  gap: 1rem; /* Espacio entre los botones */
+  margin-top: 1.5rem; /* Espacio arriba del contenedor de botones */
+}
+
+/* Estilos para los botones individuales de autenticación */
+.auth-button {
+  padding: 0.8rem 1.5rem; /* Padding dentro del botón */
+  font-size: 1rem; /* Tamaño de fuente */
+  cursor: pointer; /* Cambia el cursor al pasar por encima */
+  border: none; /* Sin borde */
+  border-radius: 5px; /* Bordes redondeados */
+  transition: background-color 0.3s ease; /* Transición suave al pasar el ratón */
+}
+
+/* Estilos específicos para el botón de Iniciar Sesión (ejemplo) */
+.auth-buttons button:first-child {
+  background-color: #007bff; /* Color azul */
+  color: white; /* Texto blanco */
+}
+
+/* Estilos específicos para el botón de Registrarse (ejemplo) */
+.auth-buttons button:last-child {
+  background-color: #007bff; /* Color azul */
+  color: white; /* Texto blanco */
+}
+
+/* Efecto hover para los botones */
+.auth-button:hover {
+  opacity: 0.9; /* Ligeramente transparente al pasar el ratón */
+}
+
+/* Estilos para el mensaje de estado o pie de página */
+.status-message {
+  margin-top: 2rem; /* Espacio arriba del mensaje */
+  color: #888; /* Color gris */
+  font-size: 0.9rem; /* Tamaño de fuente más pequeño */
 }
