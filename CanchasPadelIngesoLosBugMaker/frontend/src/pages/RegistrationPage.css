@@ -1,0 +1,27 @@
+/* frontend/src/pages/RegistrationPage.css */
+.registration-page-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 90vh;
+  padding: 20px 0; /* Espacio arriba y abajo, sin espacio lateral que maneja el form */
+  background-color: #eef1f5; /* Un fondo muy suave para la página completa */
+}
+
+.registration-page-header {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.registration-page-header h1 {
+  font-size: 2em;
+  font-weight: 600;
+}
+
+/* Asegúrate que el main ocupe el espacio necesario para centrar el formulario */
+.registration-page-container main {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}

@@ -1,0 +1,92 @@
+/* frontend/src/pages/HomePage.css */
+.homepage-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 90vh; /* Ajusta según necesites, considerando tu App.css */
+  text-align: center;
+  padding: 20px;
+  background-color: #333; /* Fondo oscuro como en tu imagen */
+  color: white;
+}
+
+.homepage-header h1 {
+  font-size: 2.5em;
+  margin-bottom: 30px;
+  color: #fff;
+}
+
+.welcome-box {
+  background-color: #f9f9f9; /* Caja más clara */
+  color: #333; /* Texto oscuro para la caja */
+  padding: 30px 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 450px; /* Ancho máximo de la caja */
+}
+
+.welcome-box h2 {
+  font-size: 1.8em;
+  margin-bottom: 15px;
+}
+
+.welcome-box p {
+  font-size: 1em;
+  margin-bottom: 25px;
+  line-height: 1.6;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column; /* Apila los botones en móviles */
+  gap: 15px; /* Espacio entre botones */
+  margin-bottom: 25px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 25px;
+  font-size: 1em;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  border: none;
+}
+
+.btn-primary {
+  background-color: #007bff; /* Azul primario */
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: #6c757d; /* Gris secundario */
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #545b62;
+  transform: translateY(-2px);
+}
+
+.construction-notice {
+  font-size: 0.9em;
+  color: #777; /* Color más suave para la nota */
+  margin-top: 20px;
+}
+
+/* Media query para pantallas más grandes (ej. escritorio) */
+@media (min-width: 500px) {
+  .action-buttons {
+    flex-direction: row; /* Botones en línea en pantallas más grandes */
+    justify-content: center; /* Centra los botones en la fila */
+  }
+}

@@ -1,0 +1,131 @@
+/* Estilos generales para el contenedor principal de la aplicación */
+#root {
+  max-width: 1280px; /* Mantiene el ancho máximo */
+  margin: 0 auto;    /* Centra el contenedor */
+  padding: 2rem;     /* Añade padding alrededor */
+  text-align: center; /* Centra el texto dentro del contenedor */
+}
+
+/* Estilos para el contenedor principal de la App */
+.App {
+  /* Puedes añadir estilos generales para el fondo, tipografía, etc. aquí */
+  font-family: sans-serif; /* Ejemplo: usar una fuente sans-serif */
+  color: #333; /* Ejemplo: color de texto oscuro */
+}
+
+/* Estilos para el encabezado */
+.App-header h1 {
+  color: #007bff; /* Ejemplo: color azul para el título */
+  margin-bottom: 1rem; /* Espacio debajo del título */
+}
+
+/* Estilos para el contenido principal (Bienvenido, botones, etc.) */
+.main-content {
+  margin-top: 2rem; /* Espacio arriba del contenido principal */
+  padding: 1.5rem; /* Padding dentro del contenido principal */
+  border: 1px solid #ddd; /* Ejemplo: un borde ligero */
+  border-radius: 8px; /* Bordes redondeados */
+  background-color: #f9f9f9; /* Ejemplo: un fondo ligeramente gris */
+}
+
+.main-content h2 {
+  color: #555; /* Ejemplo: color para el subtítulo */
+  margin-bottom: 1rem;
+}
+
+.main-content p {
+  margin-bottom: 1.5rem; /* Espacio debajo de los párrafos */
+  line-height: 1.5; /* Espaciado de línea */
+}
+
+
+/* Estilos para el contenedor de los botones de autenticación */
+.auth-buttons {
+  display: flex; /* Usa flexbox para alinear los botones */
+  justify-content: center; /* Centra los botones horizontalmente */
+  gap: 1rem; /* Espacio entre los botones */
+  margin-top: 1.5rem; /* Espacio arriba del contenedor de botones */
+}
+
+/* Estilos para los botones individuales de autenticación */
+.auth-button {
+  padding: 0.8rem 1.5rem; /* Padding dentro del botón */
+  font-size: 1rem; /* Tamaño de fuente */
+  cursor: pointer; /* Cambia el cursor al pasar por encima */
+  border: none; /* Sin borde */
+  border-radius: 5px; /* Bordes redondeados */
+  transition: background-color 0.3s ease; /* Transición suave al pasar el ratón */
+}
+
+/* Estilos específicos para el botón de Iniciar Sesión (ejemplo) */
+.auth-buttons button:first-child {
+  background-color: #007bff; /* Color azul */
+  color: white; /* Texto blanco */
+}
+
+/* Estilos específicos para el botón de Registrarse (ejemplo) */
+.auth-buttons button:last-child {
+  background-color: #007bff; /* Color azul */
+  color: white; /* Texto blanco */
+}
+
+/* Efecto hover para los botones */
+.auth-button:hover {
+  opacity: 0.9; /* Ligeramente transparente al pasar el ratón */
+}
+
+/* Estilos para el mensaje de estado o pie de página */
+.status-message {
+  margin-top: 2rem; /* Espacio arriba del mensaje */
+  color: #888; /* Color gris */
+  font-size: 0.9rem; /* Tamaño de fuente más pequeño */
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f0f2f5; /* Un color de fondo base para toda la app */
+  color: #333;
+}
+
+.app-navbar {
+  background-color: #343a40; /* Un color oscuro para la navbar */
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.app-navbar a {
+  color: white;
+  text-decoration: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.app-navbar a:hover, .app-navbar a.active { /* Asumiendo que podrías usar NavLink para 'active' class */
+  background-color: #495057;
+}
+
+.navbar-brand {
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 10px; /* Espacio entre enlaces */
+}
+
+.app-container {
+  max-width: 1200px; /* O el ancho que prefieras */
+  margin: 0 auto; /* Centra el contenido */
+  padding: 20px;   /* Espacio alrededor del contenido de la página */
+  /* No establezcas un min-height aquí si las páginas individuales lo manejan */
+}
