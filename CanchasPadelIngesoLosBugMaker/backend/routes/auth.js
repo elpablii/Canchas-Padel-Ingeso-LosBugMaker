@@ -2,8 +2,10 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const User = require('../models/User');
+const db = require('../db');
 
 
 const validarRutChileno = (rutCompleto) => {
@@ -106,6 +108,54 @@ router.post('/register', async (req, res) => {
         // Error genérico del servidor
         res.status(500).json({ message: 'Ocurrió un error en el servidor al intentar registrar el usuario.' });
     }
+});
+
+// --- Ruta de Inicio de Sesión: POST /api/auth/login ---
+router.post('/login', async (req, res) => {
+  try {
+    const { rut, password } = req.body;
+
+    if (!rut || !password) {
+      return res.status(400).json({ message: 'Debe ingresar RUT y contraseña.' });
+    }
+
+    const rutLimpio = rut.trim();
+    if (!validarRutChileno(rutLimpio)) {
+      return res.status(400).json({ message: 'El RUT ingresado no es válido o tiene un formato incorrecto (ej: 12345678-9).' });
+    }
+
+    //Buscar al usuario
+    const user = await User.findOne({ where: { rut: rutLimpio } });
+    if (!user) {
+      return res.status(401).json({ message: 'RUT o contraseña inválidos.' });
+    }
+
+    //Verificar contraseña (comparacion)
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'RUT o contraseña inválidos.' });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, rut: user.rut },
+      process.env.JWT_SECRET || 'secretoTemporal',
+      { expiresIn: '1h' }
+    );
+
+    res.status(200).json({
+      message: 'Inicio de sesión exitoso.',
+      token,
+      user: {
+        id: user.id,
+        rut: user.rut,
+        email: user.email
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en inicio de sesión:', error);
+    res.status(500).json({ message: 'Ocurrió un error en el servidor al intentar iniciar sesión.' });
+  }
 });
 
 module.exports = router;

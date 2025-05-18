@@ -3,7 +3,7 @@ import React from 'react';
 import { Routes, Route, Link as RouterLink } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import RegistrationPage from './pages/RegistrationPage';
-// import LoginPage from './pages/LoginPage'; // Descomenta cuando crees LoginPage
+import LoginPage from './pages/LoginPage'; // Descomenta cuando crees LoginPage
 
 import './App.css'; // Tus estilos globales de App
 
@@ -31,6 +31,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/register" element={<RegistrationPage />} />
+          <Route path="/login" element={<LoginPage />} />
           {/* Crea un componente LoginPage.jsx similar a RegistrationPage.jsx
           que contenga un LoginForm.jsx 
           <Route path="/login" element={<LoginPage />} /> 
