@@ -12,7 +12,7 @@ function HomePage() {
       <main className="homepage-main">
         <div className="welcome-box">
           <h2>Bienvenido/a</h2>
-          <p>Gestiona tus reservas de pádel de forma fácil y rápida.</p>
+          <p>¡Las mejores canchas de pádel para usar y jugar!</p>
           <div className="action-buttons">
             {/* Asumimos que tendrás una ruta /login más adelante */}
             <Link to="/login" className="btn btn-primary">
@@ -23,7 +23,7 @@ function HomePage() {
             </Link>
           </div>
           <p className="construction-notice">
-            FrontEnd en construcción. ¡Se agregarán más funciones pronto!
+            La página está en construcción. ¡Se irán agregando más funciones pronto!
           </p>
         </div>
       </main>

@@ -1,0 +1,83 @@
+/* frontend/src/pages/UserHomePage.css */
+
+.user-homepage-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background-color: #f4f7f6; /* Un fondo suave para la página */
+  min-height: calc(100vh - 120px); /* Ajusta según la altura de tu Navbar y Footer */
+  box-sizing: border-box;
+}
+
+.user-homepage-header {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.user-homepage-header h1 {
+  font-size: 2.2em; /* Tamaño del título principal */
+  font-weight: 600;
+  color: #2c3e50; /* Un color oscuro pero no negro puro */
+}
+
+.user-homepage-content p {
+  font-size: 1.1em; /* Tamaño del texto de párrafo */
+  color: #555; /* Un gris oscuro para el texto */
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
+.user-data-section {
+  margin-top: 30px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #ffffff; /* Fondo blanco para la sección de datos */
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Una sombra sutil */
+  width: 100%;
+  max-width: 600px; /* Ancho máximo para la sección de datos */
+  text-align: left;
+}
+
+.user-data-section h3 {
+  font-size: 1.5em;
+  color: #34495e; /* Un color azulado/grisáceo para el subtítulo */
+  margin-bottom: 15px;
+  border-bottom: 2px solid #e0e0e0; /* Línea divisoria sutil */
+  padding-bottom: 10px;
+}
+
+.user-data-json {
+  background: #f9f9f9; /* Fondo ligeramente gris para el bloque de código JSON */
+  border: 1px solid #eee;
+  padding: 15px;
+  border-radius: 5px;
+  font-family: 'Courier New', Courier, monospace; /* Fuente monoespaciada para el JSON */
+  font-size: 0.95em;
+  white-space: pre-wrap; /* Para que el JSON respete los saltos de línea y espacios */
+  word-wrap: break-word; /* Para que las líneas largas se corten */
+  color: #333;
+}
+
+.logout-button {
+  background-color: #e74c3c; /* Un color rojo para el botón de logout */
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  font-size: 1.1em;
+  font-weight: bold;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  margin-top: 20px;
+}
+
+.logout-button:hover {
+  background-color: #c0392b; /* Un rojo más oscuro al pasar el mouse */
+  transform: translateY(-2px); /* Efecto de elevación sutil */
+}
+
+/* Puedes añadir más estilos para otros elementos como tarjetas de reservas, etc. */
+
