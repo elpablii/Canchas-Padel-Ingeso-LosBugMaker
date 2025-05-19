@@ -1,7 +1,7 @@
 // frontend/src/pages/UserHomePage.jsx
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Importa Link
 import './UserHomePage.css'; // Importa el archivo CSS
 
 function UserHomePage() {
@@ -14,8 +14,13 @@ function UserHomePage() {
   };
 
   if (!user) {
-    // Considera un componente de carga más elaborado o una redirección si es necesario
-    // Esto también podría manejarse con el ProtectedRoute más efectivamente
+    // Esto no debería pasar si tienes rutas protegidas, pero es una salvaguarda
+    // Opcionalmente, podrías redirigir al login aquí si no hay usuario
+    // useEffect(() => {
+    //   if (!user) {
+    //     navigate('/login');
+    //   }
+    // }, [user, navigate]);
     return <p>Cargando datos del usuario o no estás autenticado...</p>;
   }
 
@@ -26,8 +31,20 @@ function UserHomePage() {
       </header>
       
       <section className="user-homepage-content">
-        <p>Esta es tu página principal después de iniciar sesión.</p>
-        <p>Aquí podrás ver tus reservas, perfil, y más funcionalidades que se añadan.</p>
+        <p>Desde aquí puedes gestionar tus actividades en el club.</p>
+      </section>
+
+      {/* Sección de Acciones Principales */}
+      <section className="user-actions-section">
+        <h2>¿Qué te gustaría hacer?</h2>
+        <div className="action-buttons-container">
+          <Link to="/reservar-cancha" className="action-button primary-action">
+            Reservar Cancha
+          </Link>
+          <Link to="/disponibilidad-canchas" className="action-button secondary-action">
+            Ver Disponibilidad de Canchas
+          </Link>
+        </div>
       </section>
       
       <section className="user-data-section">

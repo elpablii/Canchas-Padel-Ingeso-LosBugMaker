@@ -12,57 +12,114 @@
 
 .user-homepage-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px; /* Reducido un poco el margen */
   color: #333;
 }
 
 .user-homepage-header h1 {
-  font-size: 2.2em; /* Tamaño del título principal */
+  font-size: 2.2em;
   font-weight: 600;
-  color: #2c3e50; /* Un color oscuro pero no negro puro */
+  color: #2c3e50;
 }
 
 .user-homepage-content p {
-  font-size: 1.1em; /* Tamaño del texto de párrafo */
-  color: #555; /* Un gris oscuro para el texto */
+  font-size: 1.1em;
+  color: #555;
   line-height: 1.6;
-  margin-bottom: 15px;
+  margin-bottom: 25px; /* Aumentado un poco el margen */
+  text-align: center;
+}
+
+/* Nueva sección para los botones de acción */
+.user-actions-section {
+  text-align: center;
+  margin-bottom: 30px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.user-actions-section h2 {
+  font-size: 1.6em;
+  color: #34495e;
+  margin-bottom: 20px;
+}
+
+.action-buttons-container {
+  display: flex;
+  flex-direction: column; /* Apila los botones en móviles */
+  gap: 15px; /* Espacio entre botones */
+}
+
+.action-button {
+  display: block; /* Hace que el Link ocupe todo el ancho disponible */
+  padding: 15px 25px;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 8px; /* Bordes más redondeados */
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+  text-align: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.action-button.primary-action {
+  background-color: #3498db; /* Un azul atractivo */
+  color: white;
+}
+
+.action-button.primary-action:hover {
+  background-color: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.action-button.secondary-action {
+  background-color: #ecf0f1; /* Un gris claro */
+  color: #34495e; /* Texto oscuro para contraste */
+  border: 1px solid #bdc3c7; /* Un borde sutil */
+}
+
+.action-button.secondary-action:hover {
+  background-color: #dde1e2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .user-data-section {
-  margin-top: 30px;
+  margin-top: 20px; /* Ajustado el margen */
   margin-bottom: 30px;
   padding: 20px;
-  background-color: #ffffff; /* Fondo blanco para la sección de datos */
+  background-color: #ffffff;
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Una sombra sutil */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   width: 100%;
-  max-width: 600px; /* Ancho máximo para la sección de datos */
+  max-width: 600px;
   text-align: left;
 }
 
 .user-data-section h3 {
   font-size: 1.5em;
-  color: #34495e; /* Un color azulado/grisáceo para el subtítulo */
+  color: #34495e;
   margin-bottom: 15px;
-  border-bottom: 2px solid #e0e0e0; /* Línea divisoria sutil */
+  border-bottom: 2px solid #e0e0e0;
   padding-bottom: 10px;
 }
 
 .user-data-json {
-  background: #f9f9f9; /* Fondo ligeramente gris para el bloque de código JSON */
+  background: #f9f9f9;
   border: 1px solid #eee;
   padding: 15px;
   border-radius: 5px;
-  font-family: 'Courier New', Courier, monospace; /* Fuente monoespaciada para el JSON */
+  font-family: 'Courier New', Courier, monospace;
   font-size: 0.95em;
-  white-space: pre-wrap; /* Para que el JSON respete los saltos de línea y espacios */
-  word-wrap: break-word; /* Para que las líneas largas se corten */
+  white-space: pre-wrap;
+  word-wrap: break-word;
   color: #333;
 }
 
 .logout-button {
-  background-color: #e74c3c; /* Un color rojo para el botón de logout */
+  background-color: #e74c3c;
   color: white;
   border: none;
   padding: 12px 25px;
@@ -75,9 +132,18 @@
 }
 
 .logout-button:hover {
-  background-color: #c0392b; /* Un rojo más oscuro al pasar el mouse */
-  transform: translateY(-2px); /* Efecto de elevación sutil */
+  background-color: #c0392b;
+  transform: translateY(-2px);
 }
 
-/* Puedes añadir más estilos para otros elementos como tarjetas de reservas, etc. */
-
+/* Media query para pantallas más grandes (ej. escritorio) */
+@media (min-width: 600px) {
+  .action-buttons-container {
+    flex-direction: row; /* Botones en línea en pantallas más grandes */
+    justify-content: center; /* Centra los botones en la fila */
+  }
+  .action-button {
+    margin: 0 10px; /* Añade espacio horizontal entre botones en modo fila */
+    min-width: 200px; /* Un ancho mínimo para que se vean bien */
+  }
+}
