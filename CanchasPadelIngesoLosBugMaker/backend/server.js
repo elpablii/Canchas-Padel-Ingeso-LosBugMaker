@@ -6,9 +6,9 @@ const cors = require('cors'); // Para permitir peticiones desde otros dominios (
 const morgan = require('morgan'); // Logger de peticiones HTTP
 
 const { sequelize, testDbConnection } = require('./config/database'); // Config de Sequelize
-const User = require('./models/User'); // Importa tu modelo User para sincronizar
+const User = require('./models/User');
+const Cancha = require('./models/Cancha');
 // Importa otros modelos aquí a medida que los crees:
-// const Cancha = require('./models/Cancha');
 // const Reserva = require('./models/Reserva');
 
 // Importar rutas
