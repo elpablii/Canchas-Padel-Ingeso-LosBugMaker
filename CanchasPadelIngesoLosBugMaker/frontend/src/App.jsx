@@ -3,9 +3,11 @@ import React from 'react';
 import { Routes, Route, Link as RouterLink, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import RegistrationPage from './pages/RegistrationPage';
+import ReservationPage from './pages/ReservationPage';
 import LoginPage from './pages/LoginPage';
 import UserHomePage from './pages/UserHomePage'; // Importa la nueva página
 import { useAuth } from './context/AuthContext'; // Importa useAuth
+
 
 import './App.css'; // Tus estilos globales de App
 
@@ -55,6 +57,15 @@ function App() {
                 <UserHomePage />
               </ProtectedRoute>
             } 
+          />
+          {/* Página de reservas (protegida) */}
+          <Route
+            path="/reservar-cancha"
+            element={
+              <ProtectedRoute>
+                <ReservationPage />
+              </ProtectedRoute>
+            }
           />
           
           {/* Ruta para manejar páginas no encontradas */}

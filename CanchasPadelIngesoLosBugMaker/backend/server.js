@@ -8,6 +8,7 @@ const morgan = require('morgan'); // Logger de peticiones HTTP
 const { sequelize, testDbConnection } = require('./config/database'); // Config de Sequelize
 const User = require('./models/User');
 const Cancha = require('./models/Cancha');
+const reservaRoutes = require('./routes/reservas');
 // Importa otros modelos aquí a medida que los crees:
 // const Reserva = require('./models/Reserva');
 
@@ -31,6 +32,8 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes); // Rutas de autenticación bajo /api/auth
+
+app.use('/api/reservas', reservaRoutes);
 // app.use('/api/canchas', canchasRoutes); // Ejemplo
 // app.use('/api/reservas', reservasRoutes); // Ejemplo
 
