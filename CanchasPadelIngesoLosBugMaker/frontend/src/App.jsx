@@ -7,6 +7,7 @@ import ReservationPage from './pages/ReservationPage';
 import LoginPage from './pages/LoginPage';
 import UserHomePage from './pages/UserHomePage'; // Importa la nueva página
 import { useAuth } from './context/AuthContext'; // Importa useAuth
+import AvailabilityPage from './pages/AvailabilityPage';
 
 
 import './App.css'; // Tus estilos globales de App
@@ -64,6 +65,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <ReservationPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route 
+            path="/disponibilidad-canchas" 
+            element={
+              <ProtectedRoute>
+                <AvailabilityPage />
               </ProtectedRoute>
             }
           />

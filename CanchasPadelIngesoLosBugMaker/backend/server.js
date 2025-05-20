@@ -1,6 +1,7 @@
 // backend/server.js
 require('dotenv').config(); // Carga variables de entorno
 
+
 const express = require('express');
 const cors = require('cors'); // Para permitir peticiones desde otros dominios (tu frontend)
 const morgan = require('morgan'); // Logger de peticiones HTTP
@@ -9,6 +10,7 @@ const { sequelize, testDbConnection } = require('./config/database'); // Config 
 const User = require('./models/User');
 const Cancha = require('./models/Cancha');
 const reservaRoutes = require('./routes/reservas');
+const availabilityRoutes = require('./routes/disponibilidad');
 // Importa otros modelos aquí a medida que los crees:
 // const Reserva = require('./models/Reserva');
 
@@ -34,6 +36,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes); // Rutas de autenticación bajo /api/auth
 
 app.use('/api/reservas', reservaRoutes);
+app.use('/api/disponibilidad', availabilityRoutes);
 // app.use('/api/canchas', canchasRoutes); // Ejemplo
 // app.use('/api/reservas', reservasRoutes); // Ejemplo
 

@@ -30,8 +30,8 @@ function ReservationForm() {
           fecha,
           horaInicio,
           horaFin,
-          requiereEquipamiento,
-          rut,
+          equipamiento: requiereEquipamiento,
+          rutReserva: rut,
         }),
       });
 
