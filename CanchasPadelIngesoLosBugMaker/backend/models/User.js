@@ -3,19 +3,25 @@ const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database'); // Importa la instancia de Sequelize
 
 const User = sequelize.define('User', {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
+  rut: { // Asumiendo que RUT es tu clave primaria ahora
+    type: DataTypes.STRING,
     primaryKey: true,
     allowNull: false,
+    comment: 'RUT del usuario, formato XXXXXXXX-X. Es la clave primaria.',
   },
-  rut: {
+  nombre: { 
     type: DataTypes.STRING,
-    allowNull: false,
-    unique: {
-      name: 'unique_rut',
-      msg: 'El RUT ingresado ya está registrado.',
+    allowNull: false, 
+    validate: {
+      notEmpty: {
+        msg: 'El nombre no puede estar vacío.'
+      },
+      len: {
+        args: [2, 100],
+        msg: 'El nombre debe tener entre 2 y 100 caracteres.'
+      }
     },
+    comment: 'Nombre completo del usuario.',
   },
   email: {
     type: DataTypes.STRING,
@@ -34,20 +40,16 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  // Puedes añadir más campos según necesites, por ejemplo:
-  // nombre: {
-  //   type: DataTypes.STRING,
-  //   allowNull: true, // o false si es obligatorio
-  // },
-  // rol: {
-  //   type: DataTypes.STRING,
-  //   defaultValue: 'socio', // ej: 'socio', 'admin'
-  //   allowNull: false,
-  // }
+  rol: { // NUEVO CAMPO ROL
+    type: DataTypes.ENUM('admin', 'socio'), // Define los roles posibles
+    allowNull: false,
+    defaultValue: 'socio', // Rol por defecto para nuevos usuarios
+    comment: 'Rol del usuario (admin o socio)',
+  }
+  // createdAt y updatedAt se añaden automáticamente.
 }, {
   tableName: 'users', // Nombre explícito de la tabla
   timestamps: true,   // Habilita createdAt y updatedAt (por defecto es true)
-  // paranoid: true,  // Si quieres borrado lógico (soft delete), añade un campo `deletedAt`
 });
 
 module.exports = User;

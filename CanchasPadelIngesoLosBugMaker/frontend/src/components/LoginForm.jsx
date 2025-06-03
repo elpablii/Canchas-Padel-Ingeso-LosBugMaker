@@ -1,75 +1,87 @@
 // frontend/src/components/LoginForm.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Para la redirección
-import { useAuth } from '../context/AuthContext'; // Importa el hook useAuth
-import './RegistrationForm.css'; // Asumo que este CSS es genérico para formularios
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // Asegúrate que la ruta sea correcta
+// import './LoginForm.css'; // Si tienes estilos específicos para LoginForm
+// O reutiliza RegistrationForm.css si es genérico para formularios
+import './RegistrationForm.css';
+
 
 function LoginForm() {
   const [rut, setRut] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  // successMessage ya no es tan necesario aquí si redirigimos inmediatamente
-  // const [successMessage, setSuccessMessage] = useState('');
-
-  const navigate = useNavigate(); // Hook para la navegación
-  const { login } = useAuth(); // Obtiene la función login de AuthContext
+  
+  const navigate = useNavigate();
+  const { login } = useAuth(); 
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
-    // setSuccessMessage('');
+    console.log("LOGIN_FORM: handleSubmit iniciado.");
+
 
     if (!rut || !password) {
       setError('Por favor ingresa RUT y contraseña.');
+      console.log("LOGIN_FORM: Error - Campos obligatorios faltantes.");
       return;
     }
 
     try {
-      // Asegúrate que esta URL coincida con tu backend:
-      // Si tu backend usa /api/auth/inicioSesion, mantenlo.
-      // Si tu backend usa /api/auth/login (como sugerí), cámbialo aquí.
-      const response = await fetch('http://localhost:3001/api/auth/login', {
+      console.log("LOGIN_FORM: Intentando fetch a /api/auth/login con RUT:", rut.trim());
+      // Asegúrate que esta URL coincida con tu endpoint de backend
+      const response = await fetch('/api/auth/login', { 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ rut, password }),
+        body: JSON.stringify({ rut: rut.trim(), password }),
       });
+      console.log("LOGIN_FORM: Respuesta del fetch recibida, status:", response.status);
+
 
       const data = await response.json();
+      console.log("LOGIN_FORM: Datos de la respuesta JSON:", data);
+
 
       if (!response.ok) {
-        // response.ok es false si el status es 4xx o 5xx
         throw new Error(data.message || 'Error al iniciar sesión. Verifique sus credenciales.');
       }
 
       // Inicio de sesión exitoso:
-      // Llama a la función login del AuthContext para guardar el token y los datos del usuario
-      login(data.user, data.token);
+      console.log("LOGIN_FORM: Login exitoso en backend. Usuario:", data.user, "Token:", data.token ? "Recibido" : "No Recibido");
+      login(data.user, data.token); // Guarda el token y los datos del usuario (incluyendo el rol)
 
-      // setSuccessMessage('Inicio de sesión exitoso!'); // Opcional si rediriges
-      
-      // Limpiar campos (opcional, ya que vamos a redirigir)
-      // setRut('');
-      // setPassword('');
-
-      // Redirigir a la página principal del usuario
-      // Cambia '/user-home' por la ruta real que definas para la página principal del usuario
-      navigate('/user-home'); 
+      // Redirigir basado en el rol del usuario
+      if (data.user && data.user.rol === 'admin') {
+        console.log("LOGIN_FORM: Usuario es admin, redirigiendo a /admin/dashboard");
+        navigate('/admin/dashboard'); // Redirigir a la página de admin
+      } else {
+        console.log("LOGIN_FORM: Usuario es socio o rol no admin, redirigiendo a /user-home");
+        navigate('/user-home'); // Redirigir a la página de usuario normal
+      }
 
     } catch (err) {
-      console.error("Error en el fetch del login:", err);
-      setError(err.message || 'Ocurrió un error al iniciar sesión.');
+      console.error("LOGIN_FORM: Error capturado en handleSubmit (objeto err crudo):", err);
+      if (err && typeof err === 'object' && err.message) {
+        setError(err.message);
+      } else if (typeof err === 'string') {
+        setError(err);
+      } else {
+        setError('Ocurrió un error inesperado durante el inicio de sesión.');
+        console.log("LOGIN_FORM: 'err' en el catch no tenía propiedad .message o era undefined. 'err' fue:", err);
+      }
     }
   };
 
   return (
-    <div className="registration-form-container"> {/* Considera renombrar esta clase si es específica de registro */}
+    // Usando las clases de RegistrationForm.css si son genéricas para formularios
+    // o crea y usa LoginForm.css
+    <div className="registration-form-container"> 
       <form onSubmit={handleSubmit} className="registration-form">
         <h2>Iniciar Sesión</h2>
         {error && <p className="error-message">{error}</p>}
-        {/* {successMessage && <p className="success-message">{successMessage}</p>} */}
-
+        
         <div className="form-group">
           <label htmlFor="rut">RUT (ej: 12345678-9)</label>
           <input
@@ -77,6 +89,7 @@ function LoginForm() {
             id="rut"
             value={rut}
             onChange={(e) => setRut(e.target.value)}
+            placeholder="Ingrese su RUT"
             required
           />
         </div>
@@ -88,6 +101,7 @@ function LoginForm() {
             id="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            placeholder="Ingrese su contraseña"
             required
           />
         </div>

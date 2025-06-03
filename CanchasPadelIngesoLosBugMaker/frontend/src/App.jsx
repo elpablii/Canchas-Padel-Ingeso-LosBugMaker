@@ -5,26 +5,48 @@ import HomePage from './pages/HomePage';
 import RegistrationPage from './pages/RegistrationPage';
 import ReservationPage from './pages/ReservationPage';
 import LoginPage from './pages/LoginPage';
-import UserHomePage from './pages/UserHomePage'; // Importa la nueva página
-import { useAuth } from './context/AuthContext'; // Importa useAuth
+import UserHomePage from './pages/UserHomePage';
 import AvailabilityPage from './pages/AvailabilityPage';
+import AdminDashboardPage from './pages/AdminDashboardPage'; // Importar página de admin
+import { useAuth } from './context/AuthContext';
 
+import './App.css';
 
-import './App.css'; // Tus estilos globales de App
-
-// Componente para Rutas Protegidas
+// Componente para Rutas Protegidas (usuarios logueados en general)
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
-    // Si no está autenticado, redirige a la página de login
     return <Navigate to="/login" replace />;
   }
-  return children; // Si está autenticado, renderiza el componente hijo
+  return children;
 }
 
-// Un componente simple para una Navbar básica si la necesitas
+// NUEVO: Componente para Rutas Protegidas de Administrador
+function AdminProtectedRoute({ children }) {
+  const { isAuthenticated, user } = useAuth();
+  
+  if (!isAuthenticated) {
+    // Primero, debe estar logueado
+    return <Navigate to="/login" replace />;
+  }
+  if (user && user.rol !== 'admin') {
+    // Si está logueado pero NO es admin, redirige a la página de usuario normal
+    return <Navigate to="/user-home" replace />;
+  }
+  if (!user) { 
+    // Caso improbable si isAuthenticated es true, pero por seguridad
+    return <Navigate to="/login" replace />;
+  }
+  // Si está logueado y es admin, permite el acceso
+  return children; 
+}
+
+// Navbar actualizada para reflejar el rol
 function Navbar() {
   const { isAuthenticated, logout, user } = useAuth();
+
+  // Saludo personalizado
+  const userGreeting = user ? (user.nombre || user.email || user.rut) : '';
 
   return (
     <nav className="app-navbar">
@@ -33,8 +55,33 @@ function Navbar() {
         <RouterLink to="/">Inicio</RouterLink>
         {!isAuthenticated && <RouterLink to="/register">Registrarse</RouterLink>}
         {!isAuthenticated && <RouterLink to="/login">Iniciar Sesión</RouterLink>}
-        {isAuthenticated && user && <span style={{ color: 'white', marginRight: '15px' }}>Hola, {user.email || user.rut}</span>}
-        {isAuthenticated && <button onClick={logout} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '8px 15px' }}>Cerrar Sesión</button>}
+        
+        {isAuthenticated && user && (
+          <>
+            <span style={{ color: 'white', marginRight: '10px' }}>
+              Hola, {userGreeting} {user.rol === 'admin' && '(Admin)'}
+            </span>
+            {/* Enlace al dashboard correspondiente */}
+            {user.rol === 'admin' ? (
+              <RouterLink to="/admin/dashboard" style={{ color: 'yellow', marginRight: '10px' }}>Panel Admin</RouterLink>
+            ) : (
+              <RouterLink to="/user-home" style={{ color: 'cyan', marginRight: '10px' }}>Mi Página</RouterLink>
+            )}
+            <button 
+              onClick={logout} 
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                color: 'white', 
+                cursor: 'pointer', 
+                padding: '8px 15px',
+                fontSize: 'inherit' 
+              }}
+            >
+              Cerrar Sesión
+            </button>
+          </>
+        )}
       </div>
     </nav>
   );
@@ -50,7 +97,6 @@ function App() {
           <Route path="/register" element={<RegistrationPage />} />
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Ruta para la página principal del usuario (protegida) */}
           <Route 
             path="/user-home" 
             element={
@@ -59,7 +105,6 @@ function App() {
               </ProtectedRoute>
             } 
           />
-          {/* Página de reservas (protegida) */}
           <Route
             path="/reservar-cancha"
             element={
@@ -68,7 +113,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route 
             path="/disponibilidad-canchas" 
             element={
@@ -78,7 +122,16 @@ function App() {
             }
           />
           
-          {/* Ruta para manejar páginas no encontradas */}
+          {/* NUEVA RUTA PARA EL DASHBOARD DEL ADMINISTRADOR */}
+          <Route 
+            path="/admin/dashboard" 
+            element={
+              <AdminProtectedRoute> {/* Usar el nuevo protector de ruta */}
+                <AdminDashboardPage />
+              </AdminProtectedRoute>
+            }
+          />
+          
           <Route path="*" element={
             <div style={{ textAlign: 'center', marginTop: '50px' }}>
               <h1>404 - Página No Encontrada</h1>

@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
     setToken(authToken);
     setUser(userData);
-    // setIsAuthenticated(true); // useEffect se encargará de esto
+    setIsAuthenticated(true);
     console.log("Login successful, user and token set:", userData, authToken);
   };
 
