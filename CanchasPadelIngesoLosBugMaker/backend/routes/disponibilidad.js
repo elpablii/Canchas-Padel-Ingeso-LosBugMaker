@@ -5,31 +5,32 @@ const Cancha = require('../models/Cancha');
 
 const { Op } = require('sequelize');
 
-// GET /api/availability?date=YYYY-MM-DD&time=HH:mm:ss
+// GET /api/availability?date=YYYY-MM-DD
 router.get('/', async (req, res) => {
   try {
-    const { date, time } = req.query;
+    const { date } = req.query;
 
-    if (!date || !time) {
-      return res.status(400).json({ message: 'Parámetros "date" y "time" son requeridos.' });
+    if (!date) {
+      return res.status(400).json({ message: 'El parámetro "date" es requerido.' });
     }
 
     // Paso 1: Obtener todas las canchas
     const todasLasCanchas = await Cancha.findAll();
 
-    // Paso 2: Buscar reservas para la fecha y hora especificadas
-    const reservasEncontradas = await Reserva.findAll({
+    // Paso 2: Buscar todas las reservas de ese día
+    const reservasDelDia = await Reserva.findAll({
       where: {
-        fecha: date,
-        horaInicio: time
+        fecha: date
       }
     });
 
-    // Paso 3: Identificar las IDs de las canchas que YA ESTÁN reservadas
-    const canchasReservadasIds = reservasEncontradas.map(reserva => reserva.canchaId);
+    // Paso 3: Obtener IDs de canchas ya reservadas ese día
+    const canchasReservadasIds = reservasDelDia.map(r => r.canchaId);
 
-    // Paso 4: Filtrar las canchas para obtener solo las que NO están en la lista de reservadas
-    const canchasDisponibles = todasLasCanchas.filter(cancha => !canchasReservadasIds.includes(cancha.id));
+    // Paso 4: Filtrar las disponibles
+    const canchasDisponibles = todasLasCanchas.filter(
+      cancha => !canchasReservadasIds.includes(cancha.id)
+    );
 
     return res.json({
       disponibles: canchasDisponibles

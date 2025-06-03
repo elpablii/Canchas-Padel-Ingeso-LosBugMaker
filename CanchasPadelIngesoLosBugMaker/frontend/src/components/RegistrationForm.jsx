@@ -6,6 +6,7 @@ import './RegistrationForm.css';
 function RegistrationForm() {
   const [rut, setRut] = useState('');
   const [email, setEmail] = useState('');
+  const [nombre, setNombre] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -39,6 +40,7 @@ function RegistrationForm() {
         },
         body: JSON.stringify({
           rut: rut.trim(),
+          nombre: nombre.trim(),
           email: email,
           password: password,
         }),
@@ -109,6 +111,17 @@ function RegistrationForm() {
           <label htmlFor="rut">RUT (ej: 12345678-9)</label>
           <input type="text" id="rut" value={rut} onChange={(e) => setRut(e.target.value)} placeholder="Ingrese su RUT" required />
         </div>
+        <div className="form-group">
+            <label htmlFor="nombre">Nombre</label>
+            <input
+              type="text"
+              id="nombre"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ingrese su nombre"
+              required
+            />
+          </div>
         <div className="form-group">
           <label htmlFor="email">Email</label>
           <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="correo@ejemplo.com" required />

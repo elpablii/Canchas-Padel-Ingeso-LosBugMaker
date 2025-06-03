@@ -3,6 +3,7 @@ const router = express.Router();
 const Reserva = require('../models/Reserva');
 const User = require('../models/User');
 const Cancha = require('../models/Cancha');
+const { Op } = require('sequelize');
 
 // --- Helper: Validación de RUT chileno ---
 const validarRutChileno = (rutCompleto) => {
@@ -50,6 +51,33 @@ router.post('/', async (req, res) => {
             console.log(`[${timestamp}] VALIDATION_FAIL: Cancha no encontrada`);
             return res.status(404).json({ message: 'La cancha especificada no existe.' });
         }
+        const conflicto = await Reserva.findOne({
+            where: {
+                canchaId,
+                fecha,
+                [Op.or]: [
+                {
+                    horaInicio: {
+                    [Op.between]: [horaInicio, horaFin]
+                    }
+                },
+                {
+                    horaFin: {
+                    [Op.between]: [horaInicio, horaFin]
+                    }
+                },
+                {
+                    [Op.and]: [
+                    { horaInicio: { [Op.lte]: horaInicio } },
+                    { horaFin: { [Op.gte]: horaFin } }
+                    ]
+                }
+                ]
+            }
+            });
+            if (conflicto) {
+            return res.status(409).json({ message: 'Ya existe una reserva para ese horario en esta cancha.' });
+            }
 
         // Crear reserva
         const nuevaReserva = await Reserva.create({
