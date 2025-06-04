@@ -13,7 +13,31 @@ router.get('/', async (req, res) => {
     if (!date) {
       return res.status(400).json({ message: 'El parámetro "date" es requerido.' });
     }
+    const {horaInicio, horaFin } = req.query;
 
+    const reservas = await Reserva.findAll({
+      where: {
+        fecha: date,
+        [Op.or]: [
+          {
+            horaInicio: {
+              [Op.between]: [horaInicio, horaFin]
+            }
+          },
+          {
+            horaFin: {
+              [Op.between]: [horaInicio, horaFin]
+            }
+          },
+          {
+            [Op.and]: [
+              { horaInicio: { [Op.lte]: horaInicio } },
+              { horaFin: { [Op.gte]: horaFin } }
+            ]
+          }
+        ]
+      }
+    });
     // Paso 1: Obtener todas las canchas
     const todasLasCanchas = await Cancha.findAll();
 

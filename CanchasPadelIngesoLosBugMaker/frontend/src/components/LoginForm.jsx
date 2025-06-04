@@ -51,6 +51,7 @@ function LoginForm() {
       // Inicio de sesión exitoso:
       console.log("LOGIN_FORM: Login exitoso en backend. Usuario:", data.user, "Token:", data.token ? "Recibido" : "No Recibido");
       login(data.user, data.token); // Guarda el token y los datos del usuario (incluyendo el rol)
+      localStorage.setItem('rutUsuario', rut);
 
       // Redirigir basado en el rol del usuario
       if (data.user && data.user.rol === 'admin') {

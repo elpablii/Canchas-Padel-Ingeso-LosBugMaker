@@ -44,6 +44,9 @@ function UserHomePage() {
           <Link to="/disponibilidad-canchas" className="action-button secondary-action">
             Ver Disponibilidad de Canchas
           </Link>
+          <Link to="/historial-reservas" className="btn btn-secondary">
+            Ver Historial de Reservas
+          </Link>
         </div>
       </section>
       

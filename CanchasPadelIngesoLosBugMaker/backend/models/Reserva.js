@@ -5,6 +5,7 @@ const User = require('./User');
 const Cancha = require('./Cancha');
 
 const Reserva = sequelize.define('Reserva', {
+  
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -25,6 +26,14 @@ const Reserva = sequelize.define('Reserva', {
     type: DataTypes.TIME,
     allowNull: false,
     comment: 'Hora de fin de la reserva (HH:mm)',
+
+    validate: {
+      isTimeValid() {
+        if (this.horaFin <= this.horaInicio) {
+          throw new Error('La hora de fin debe ser posterior a la de inicio.');
+        }
+      }
+    }
   },
   equipamiento: {
     type: DataTypes.BOOLEAN,
@@ -44,6 +53,10 @@ const Reserva = sequelize.define('Reserva', {
       notEmpty: true,
       len: [8, 12], 
     }
+  },
+  cancelada: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 }, {
   tableName: 'reservas',

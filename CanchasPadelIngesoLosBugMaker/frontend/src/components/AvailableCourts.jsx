@@ -62,9 +62,14 @@ function AvailableCourts({ date }) {
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            <h4>{court.name || `Cancha ${court.id}`}</h4>
-            <p><strong>ID:</strong> {court.id}</p>
-            <p><strong>Location:</strong> {court.ubicacion || '(ubicacion)'}</p>
+          <h4>{court.name || `Cancha ${court.id}`}</h4>
+          <p><strong>ID:</strong> {court.id}</p>
+          <p>
+            <strong>Valor de reserva:</strong>{' '}
+            {court.costo
+              ? `$${parseInt(court.costo, 10).toLocaleString('es-CL')}`
+              : 'N/A'}
+          </p>
           </div>
         ))}
       </div>

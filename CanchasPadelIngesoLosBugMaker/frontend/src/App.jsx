@@ -9,6 +9,7 @@ import UserHomePage from './pages/UserHomePage';
 import AvailabilityPage from './pages/AvailabilityPage';
 import AdminDashboardPage from './pages/AdminDashboardPage'; // Importar página de admin
 import { useAuth } from './context/AuthContext';
+import ReservationHistory from './components/ReservationHistory';
 
 import './App.css';
 
@@ -104,6 +105,14 @@ function App() {
                 <UserHomePage />
               </ProtectedRoute>
             } 
+          />
+          <Route 
+            path="/historial-reservas" 
+            element={
+              <ProtectedRoute>
+                <ReservationHistory />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/reservar-cancha"
