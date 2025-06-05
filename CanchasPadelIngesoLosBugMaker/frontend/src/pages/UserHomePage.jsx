@@ -27,7 +27,7 @@ function UserHomePage() {
   return (
     <div className="user-homepage-container">
       <header className="user-homepage-header">
-        <h1>¡Bienvenido/a, {user.email || user.rut}!</h1>
+        <h1>¡Bienvenido/a, {user.nombre}!</h1>
       </header>
       
       <section className="user-homepage-content">

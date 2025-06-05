@@ -1,68 +1,68 @@
 // backend/server.js
-require('dotenv').config(); // Carga variables de entorno
-
+require('dotenv').config();
 
 const express = require('express');
-const cors = require('cors'); // Para permitir peticiones desde otros dominios (tu frontend)
-const morgan = require('morgan'); // Logger de peticiones HTTP
+const cors = require('cors');
+const morgan = 'morgan'; // Corrección: morgan es un string para el require
 
-const { sequelize, testDbConnection } = require('./config/database'); // Config de Sequelize
-const User = require('./models/User');
-const Cancha = require('./models/Cancha');
-const reservaRoutes = require('./routes/reservas');
-const availabilityRoutes = require('./routes/disponibilidad');
-// Importa otros modelos aquí a medida que los crees:
+// Si estás usando el archivo models/index.js, esta es la forma correcta de importar
+const db = require('./models'); 
+// Si NO estás usando models/index.js, entonces necesitarías importar sequelize de config/database
+// y cada modelo individualmente:
+// const { sequelize, testDbConnection } = require('./config/database');
+// const User = require('./models/User');
+// const Cancha = require('./models/Cancha');
 // const Reserva = require('./models/Reserva');
 
-// Importar rutas
+const { testDbConnection } = require('./config/database'); // Puedes mantener esto para la prueba de conexión inicial
+
+// Importar rutas existentes
 const authRoutes = require('./routes/auth');
-// const canchasRoutes = require('./routes/canchas'); // Ejemplo para futuras rutas
-// const reservasRoutes = require('./routes/reservas'); // Ejemplo para futuras rutas
+const adminRoutes = require('./routes/adminRoutes'); 
+// const canchasRoutes = require('./routes/canchasRoutes'); // <--- LÍNEA COMENTADA
+const reservaRoutes = require('./routes/reservas'); 
+const availabilityRoutes = require('./routes/disponibilidad');
 
 const app = express();
-const PORT = process.env.PORT || 3001; // Puerto del servidor
+const PORT = process.env.PORT || 3001;
 
 // --- Middlewares ---
-app.use(cors()); // Habilita CORS para todas las rutas
-app.use(express.json()); // Permite a Express entender payloads JSON
-app.use(express.urlencoded({ extended: true })); // Permite a Express entender payloads URL-encoded
-app.use(morgan('dev')); // Logger de peticiones en formato 'dev'
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Corrección: uso de morgan
+const morganLogger = require('morgan'); // Importar morgan correctamente
+app.use(morganLogger('dev')); // Usar la variable importada
 
 // --- Rutas ---
 app.get('/', (req, res) => {
   res.json({ message: 'Bienvenido a la API de Canchas Pádel Ucenin V2 (PostgreSQL)' });
 });
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+// app.use('/api/canchas', canchasRoutes); // <--- LÍNEA COMENTADA
+app.use('/api/reservas', reservaRoutes); // Asegúrate que este archivo exista o coméntalo también
+app.use('/api/disponibilidad', availabilityRoutes); // Asegúrate que este archivo exista o coméntalo también
 
-app.use('/api/auth', authRoutes); // Rutas de autenticación bajo /api/auth
 
-app.use('/api/reservas', reservaRoutes);
-app.use('/api/disponibilidad', availabilityRoutes);
-// app.use('/api/canchas', canchasRoutes); // Ejemplo
-// app.use('/api/reservas', reservasRoutes); // Ejemplo
-
-// --- Sincronización con la Base de Datos y Arranque del Servidor ---
+// --- Sincronización y Arranque ---
 const startServer = async () => {
   try {
-    // 1. Probar conexión a la BDD
-    await testDbConnection();
+    await testDbConnection(); // O db.sequelize.authenticate() si usas db de models/index.js
     console.log('Conexión a la BDD verificada exitosamente (desde server.js).');
 
-    // 2. Sincronizar modelos con la BDD
-    // { alter: true } intentará modificar las tablas existentes para que coincidan con el modelo.
-    // { force: true } borrará las tablas y las recreará (¡cuidado en producción!).
-    // Sin opciones, creará las tablas si no existen, pero no modificará las existentes.
-    
-    //await sequelize.sync({ alter: true }); // Opciones: { force: false }, { alter: true }
-    //console.log('Modelos sincronizados con la base de datos.');
+    // Si estás usando migraciones, la siguiente línea debe estar comentada:
+    // await db.sequelize.sync({ alter: true }); 
+    // console.log('Modelos sincronizados (si sync está activo y usas db de models/index.js).');
 
-    // 3. Iniciar el servidor Express
     app.listen(PORT, () => {
       console.log(`Servidor backend corriendo en http://localhost:${PORT}`);
     });
 
   } catch (error) {
-    console.error('Error al iniciar el servidor:', error);
-    process.exit(1); // Termina el proceso si hay un error crítico al iniciar
+    console.error('Error crítico al iniciar el servidor:', error);
+    process.exit(1);
   }
 };
 

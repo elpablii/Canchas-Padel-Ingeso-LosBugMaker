@@ -1,71 +1,70 @@
 // backend/models/Reserva.js
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
-const User = require('./User');
-const Cancha = require('./Cancha');
 
 const Reserva = sequelize.define('Reserva', {
-  
-  id: {
+  id: { // Corresponde a tu id_reserva
     type: DataTypes.INTEGER,
     autoIncrement: true,
     primaryKey: true,
-    comment: 'ID de la reserva',
-  },
-  fecha: {
-    type: DataTypes.DATEONLY,
     allowNull: false,
-    comment: 'Fecha de la reserva (formato YYYY-MM-DD)',
   },
-  horaInicio: {
-    type: DataTypes.TIME,
+  // userRut y canchaId serán añadidas por Sequelize y definidas en models/index.js
+  fechaReserva: { // Corresponde a tu fecha_reserva
+    type: DataTypes.DATEONLY, 
     allowNull: false,
-    comment: 'Hora de inicio de la reserva (HH:mm)',
+    comment: 'Fecha para la cual se realiza la reserva',
   },
-  horaFin: {
-    type: DataTypes.TIME,
+  horaInicio: { // Corresponde a tu hora_inicio
+    type: DataTypes.TIME, 
     allowNull: false,
-    comment: 'Hora de fin de la reserva (HH:mm)',
-
-    validate: {
+    comment: 'Hora de inicio de la reserva',
+  },
+  horaTermino: { // Corresponde a tu hora_termino
+    type: DataTypes.TIME, 
+    allowNull: false,
+    comment: 'Hora de finalización de la reserva',
+    validate: { // Buena validación, la mantendremos
       isTimeValid() {
-        if (this.horaFin <= this.horaInicio) {
+        if (this.horaTermino <= this.horaInicio) {
           throw new Error('La hora de fin debe ser posterior a la de inicio.');
         }
       }
     }
   },
-  equipamiento: {
+  requiereEquipamiento: { // Corresponde a tu equipamiento (sí o no)
     type: DataTypes.BOOLEAN,
     allowNull: false,
-    comment: 'Indica si se requiere equipamiento (true/false)',
+    defaultValue: false,
+    comment: 'Indica si el usuario solicitó equipamiento (true/false)',
   },
-  boletaEquipamiento: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    comment: 'Código de boleta de equipamiento (si corresponde)',
-  },
-  rutReserva: {
-    type: DataTypes.STRING,
+  costoEquipamiento: { // Corresponde a tu boleta_equipamiento
+    type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
-    comment: 'RUT de quien hace la reserva',
+    defaultValue: 0.00,
     validate: {
-      notEmpty: true,
-      len: [8, 12], 
-    }
+      isDecimal: true,
+      min: 0,
+    },
+    comment: 'Costo del equipamiento solicitado. Será 0 si requiereEquipamiento es false.',
   },
-  cancelada: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  }
+  estadoReserva: { 
+    type: DataTypes.ENUM(
+      'Pendiente', 
+      'Confirmada', 
+      'CanceladaPorUsuario', 
+      'CanceladaPorAdmin', 
+      'Completada', 
+      'NoAsistio'
+    ),
+    allowNull: false,
+    defaultValue: 'Pendiente',
+    comment: 'Estado actual de la reserva',
+  },
 }, {
   tableName: 'reservas',
   timestamps: true,
-  comment: 'Tabla de reservas de canchas, con horario, equipamiento y RUT del usuario',
+  comment: 'Tabla para almacenar las reservas de las canchas de pádel',
 });
-
-// Relaciones
-Reserva.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
-Reserva.belongsTo(Cancha, { foreignKey: 'canchaId', as: 'cancha' });
 
 module.exports = Reserva;
