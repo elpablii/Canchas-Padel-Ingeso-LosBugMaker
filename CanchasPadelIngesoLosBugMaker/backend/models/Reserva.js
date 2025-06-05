@@ -10,9 +10,10 @@ const Reserva = sequelize.define('Reserva', {
     allowNull: false,
   },
   // userRut y canchaId serán añadidas por Sequelize y definidas en models/index.js
-  fechaReserva: { // Corresponde a tu fecha_reserva
+  fecha: {
     type: DataTypes.DATEONLY, 
     allowNull: false,
+    field: 'fechaReserva', // <-- AÑADE ESTA LÍNEA
     comment: 'Fecha para la cual se realiza la reserva',
   },
   horaInicio: { // Corresponde a tu hora_inicio

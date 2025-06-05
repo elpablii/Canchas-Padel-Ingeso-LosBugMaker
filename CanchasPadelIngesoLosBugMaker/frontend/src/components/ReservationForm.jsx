@@ -26,9 +26,9 @@ function ReservationForm({ court, date, onClose }) {
           canchaId: court.id,
           fecha: date,
           horaInicio: startTime,
-          horaFin: endTime,
-          equipamiento,
-          rutReserva,
+          horaTermino: endTime,
+          requiereEquipamiento: equipamiento, // <-- CORREGIDO: La clave es "requiereEquipamiento"
+          userRut: rutReserva,              // <-- CORREGIDO: La clave es "userRut"
         }),
       });
 

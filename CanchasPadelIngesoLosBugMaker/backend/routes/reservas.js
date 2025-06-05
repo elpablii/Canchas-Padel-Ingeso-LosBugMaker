@@ -19,18 +19,18 @@ const validarRutChileno = (rutCompleto) => {
 
 // --- Ruta: POST /api/reservas ---
 
-router.get('/historial/:rutReserva', async (req, res) => {
+router.get('/historial/:userRut', async (req, res) => { // <-- 1. Parámetro corregido
   try {
-    const { rutReserva } = req.params;
+    const { userRut } = req.params; // <-- 2. Variable corregida
     console.log("RUTA: /api/reservas/historial");
-    console.log("RUT recibido:", rutReserva);
+    console.log("RUT recibido:", userRut);
 
     const historial = await Reserva.findAll({
-      where: { rutReserva },
+      where: { userRut }, // <-- 3. Ahora la sintaxis abreviada funciona perfectamente
       include: [
         {
           model: Cancha,
-          as: 'cancha', // 👈 necesario si usaste alias
+          as: 'cancha',
           attributes: ['id', 'nombre', 'costo']
         }
       ],
@@ -81,23 +81,15 @@ router.post('/', async (req, res) => {
     console.log(`[${timestamp}] Datos recibidos (req.body):`, JSON.stringify(req.body, null, 2));
 
     try {
-        const {
-            canchaId,
-            fecha,
-            horaInicio,
-            horaFin,
-            equipamiento,
-            boletaEquipamiento,
-            rutReserva
-        } = req.body;
+        const { canchaId, fecha, horaInicio, horaTermino, requiereEquipamiento, userRut } = req.body;
 
         // Validación de campos
-        if (!canchaId || !fecha || !horaInicio || !horaFin || !rutReserva) {
-            console.log(`[${timestamp}] VALIDATION_FAIL: Faltan campos obligatorios`);
-            return res.status(400).json({ message: 'Todos los campos obligatorios deben ser completados.' });
+        if (!canchaId || !fecha || !horaInicio || !horaTermino || requiereEquipamiento === undefined || !userRut) {
+          console.log('[...] VALIDATION_FAIL: Faltan campos obligatorios');
+          return res.status(400).json({ message: 'Faltan campos obligatorios' });
         }
 
-        if (!validarRutChileno(rutReserva)) {
+        if (!validarRutChileno(userRut)) {
             console.log(`[${timestamp}] VALIDATION_FAIL: RUT inválido`);
             return res.status(400).json({ message: 'El RUT ingresado no es válido.' });
         }
@@ -115,18 +107,18 @@ router.post('/', async (req, res) => {
                 [Op.or]: [
                 {
                     horaInicio: {
-                    [Op.between]: [horaInicio, horaFin]
+                    [Op.between]: [horaInicio, horaTermino]
                     }
                 },
                 {
-                    horaFin: {
-                    [Op.between]: [horaInicio, horaFin]
+                    horaTermino: {
+                    [Op.between]: [horaInicio, horaTermino]
                     }
                 },
                 {
                     [Op.and]: [
                     { horaInicio: { [Op.lte]: horaInicio } },
-                    { horaFin: { [Op.gte]: horaFin } }
+                    { horaTermino: { [Op.gte]: horaTermino } }
                     ]
                 }
                 ]
@@ -135,16 +127,17 @@ router.post('/', async (req, res) => {
             if (conflicto) {
             return res.status(409).json({ message: 'Ya existe una reserva para ese horario en esta cancha.' });
             }
+        // Definimos un costo para el equipamiento (puedes mover esto a un archivo de config)
+        const COSTO_EQUIPAMIENTO = 5000; // Por ejemplo, 5000 pesos
 
-        // Crear reserva
         const nuevaReserva = await Reserva.create({
-            canchaId,
-            fecha,
-            horaInicio,
-            horaFin,
-            equipamiento,
-            boletaEquipamiento,
-            rutReserva
+            canchaId: canchaId,
+            userRut: userRut, // <--- CORREGIDO: Usar la variable correcta
+            fecha: fecha,
+            horaInicio: horaInicio,
+            horaTermino: horaTermino,
+            requiereEquipamiento: requiereEquipamiento, // <--- CORREGIDO: Usar la variable correcta
+            costoEquipamiento: requiereEquipamiento ? COSTO_EQUIPAMIENTO : 0, // <--- CORREGIDO: Lógica para el costo
         });
 
         console.log(`[${timestamp}] DB_OP_SUCCESS: Reserva creada`, nuevaReserva.toJSON());

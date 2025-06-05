@@ -13,7 +13,7 @@ router.get('/', async (req, res) => {
     if (!date) {
       return res.status(400).json({ message: 'El parámetro "date" es requerido.' });
     }
-    const {horaInicio, horaFin } = req.query;
+    const {horaInicio, horaTermino } = req.query;
 
     const reservas = await Reserva.findAll({
       where: {
@@ -21,18 +21,18 @@ router.get('/', async (req, res) => {
         [Op.or]: [
           {
             horaInicio: {
-              [Op.between]: [horaInicio, horaFin]
+              [Op.between]: [horaInicio, horaTermino]
             }
           },
           {
-            horaFin: {
-              [Op.between]: [horaInicio, horaFin]
+            horaTermino: {
+              [Op.between]: [horaInicio, horaTermino]
             }
           },
           {
             [Op.and]: [
               { horaInicio: { [Op.lte]: horaInicio } },
-              { horaFin: { [Op.gte]: horaFin } }
+              { horaTermino: { [Op.gte]: horaTermino } }
             ]
           }
         ]
