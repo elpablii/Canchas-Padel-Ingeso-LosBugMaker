@@ -45,13 +45,15 @@ const startServer = async () => {
   try {
     // 1. Probar conexión a la BDD
     await testDbConnection();
+    console.log('Conexión a la BDD verificada exitosamente (desde server.js).');
 
     // 2. Sincronizar modelos con la BDD
     // { alter: true } intentará modificar las tablas existentes para que coincidan con el modelo.
     // { force: true } borrará las tablas y las recreará (¡cuidado en producción!).
     // Sin opciones, creará las tablas si no existen, pero no modificará las existentes.
-    await sequelize.sync({ alter: true }); // Opciones: { force: false }, { alter: true }
-    console.log('Modelos sincronizados con la base de datos.');
+    
+    //await sequelize.sync({ alter: true }); // Opciones: { force: false }, { alter: true }
+    //console.log('Modelos sincronizados con la base de datos.');
 
     // 3. Iniciar el servidor Express
     app.listen(PORT, () => {
