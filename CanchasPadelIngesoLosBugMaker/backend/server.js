@@ -57,6 +57,9 @@ const startServer = async () => {
     // await db.sequelize.sync({ alter: true }); 
     // console.log('Modelos sincronizados (si sync está activo y usas db de models/index.js).');
 
+    console.log('Iniciando tareas programadas (cron jobs)...');
+    require('./services/cronJobs'); // Carga y activa las tareas programadas
+
     app.listen(PORT, () => {
       console.log(`Servidor backend corriendo en http://localhost:${PORT}`);
     });

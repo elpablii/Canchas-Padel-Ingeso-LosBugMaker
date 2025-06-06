@@ -4,6 +4,8 @@ const Reserva = require('../models/Reserva');
 const User = require('../models/User');
 const Cancha = require('../models/Cancha');
 const { Op } = require('sequelize');
+const { sequelize } = require('../models');
+const { enviarEmailConfirmacion } = require('../services/emailService');
 
 // --- Helper: Validación de RUT chileno ---
 const validarRutChileno = (rutCompleto) => {
@@ -52,33 +54,100 @@ router.get('/historial/:userRut', async (req, res) => { // <-- 1. Parámetro cor
 
 // PUT /api/reservas/:id/cancelar
 router.put('/:id/cancelar', async (req, res) => {
+  const transaction = await sequelize.transaction(); // Iniciar transacción para seguridad
+
   try {
-    const id = req.params.id;
+    const { id } = req.params;
+    const reserva = await Reserva.findByPk(id, { transaction });
+
+    if (!reserva) {
+      await transaction.rollback();
+      return res.status(404).json({ message: 'Reserva no encontrada.' });
+    }
+
+    // 1. VERIFICAR SI YA ESTÁ CANCELADA
+    if (reserva.estadoReserva.startsWith('Cancelada')) {
+      await transaction.rollback();
+      return res.status(400).json({ message: 'La reserva ya se encuentra cancelada.' });
+    }
+    
+    // 2. REGLA DE NEGOCIO: No cancelar si faltan menos de 24 horas
+    const ahora = new Date();
+    const inicioReserva = new Date(`${reserva.fecha}T${reserva.horaInicio}`);
+    const horasDeDiferencia = (inicioReserva - ahora) / (1000 * 60 * 60);
+
+    if (horasDeDiferencia < 24) {
+      await transaction.rollback();
+      return res.status(403).json({ message: 'No se puede cancelar una reserva con menos de 24 horas de antelación.' });
+    }
+
+    // 3. ACTUALIZAR ESTADO DE LA RESERVA
+    reserva.estadoReserva = 'CanceladaPorUsuario';
+    await reserva.save({ transaction });
+    
+    // 4. LÓGICA DE REEMBOLSO
+    const usuario = await User.findByPk(reserva.userRut, { transaction });
+    if (usuario) {
+      // Calculamos el costo total que tuvo la reserva para reembolsarlo
+      const duracionEnHoras = (new Date(`1970-01-01T${reserva.horaTermino}Z`) - new Date(`1970-01-01T${reserva.horaInicio}Z`)) / (1000 * 60 * 60);
+      const costoCancha = duracionEnHoras * 15000;
+      const costoTotal = costoCancha + reserva.costoEquipamiento;
+
+      await usuario.increment('saldo', { by: costoTotal, transaction });
+    }
+
+    // Si todo sale bien, se confirman los cambios
+    await transaction.commit();
+
+    return res.json({ message: 'Reserva cancelada y reembolso procesado exitosamente.', reserva });
+
+  } catch (error) {
+    // Si algo falla, se deshace todo
+    if (transaction) await transaction.rollback();
+    console.error('Error al cancelar reserva:', error);
+    return res.status(500).json({ message: 'Error interno del servidor.' });
+  }
+});
+
+// EN: backend/routes/reservas.js
+
+// --- RUTA: PUT /api/reservas/:id/confirmar ---
+router.put('/:id/confirmar', async (req, res) => {
+  try {
+    const { id } = req.params;
     const reserva = await Reserva.findByPk(id);
 
     if (!reserva) {
       return res.status(404).json({ message: 'Reserva no encontrada.' });
     }
 
-    if (reserva.cancelada) {
-      return res.status(400).json({ message: 'La reserva ya está cancelada.' });
+    if (reserva.estadoReserva !== 'Pendiente') {
+      return res.status(400).json({ message: `La reserva ya está en estado '${reserva.estadoReserva}', no se puede confirmar.` });
     }
 
-    reserva.cancelada = true;
+    // --- NUEVA VALIDACIÓN DE FECHA ---
+    const ahora = new Date();
+    const inicioReserva = new Date(`${reserva.fecha}T${reserva.horaInicio}`);
+
+    if (inicioReserva < ahora) {
+      return res.status(403).json({ message: 'No se puede confirmar una reserva cuya fecha ya ha pasado.' });
+    }
+    // --- FIN DE LA NUEVA VALIDACIÓN ---
+
+    reserva.estadoReserva = 'Confirmada';
     await reserva.save();
 
-    return res.json({ message: 'Reserva cancelada exitosamente.', reserva });
+    console.log(`Reserva ID ${id} confirmada exitosamente.`);
+    return res.status(200).json({ message: 'Reserva confirmada exitosamente.', reserva });
 
   } catch (error) {
-    console.error('Error al cancelar reserva:', error);
+    console.error('Error al confirmar la reserva:', error);
     return res.status(500).json({ message: 'Error interno del servidor.' });
   }
 });
 
 router.post('/', async (req, res) => {
     const timestamp = new Date().toISOString();
-    // Importamos sequelize para poder usar transacciones
-    const { sequelize } = require('../models'); 
     let transaction;
 
     try {
@@ -166,6 +235,21 @@ router.post('/', async (req, res) => {
 
         // --- 7. Confirmar la transacción ---
         await transaction.commit();
+        
+        // --- 8. ENVIAR CORREO DE CONFIRMACIÓN (AÑADE ESTE BLOQUE) ---
+        try {
+          console.log(`Intentando enviar correo de confirmación a ${user.email}...`);
+          await enviarEmailConfirmacion(user, nuevaReserva, cancha);
+        } catch (emailError) {
+          console.error('El correo de confirmación no se pudo enviar, pero la reserva fue exitosa.', emailError);
+        }
+        // --- FIN DEL BLOQUE DE CORREO ---
+
+        console.log(`[${timestamp}] PAGO Y RESERVA EXITOSOS`);
+        return res.status(201).json({
+            message: `Reserva creada y pago de $${costoTotal} realizado exitosamente.`,
+            reserva: nuevaReserva
+        });
 
         console.log(`[${timestamp}] PAGO Y RESERVA EXITOSOS`);
         return res.status(201).json({
