@@ -77,80 +77,107 @@ router.put('/:id/cancelar', async (req, res) => {
 
 router.post('/', async (req, res) => {
     const timestamp = new Date().toISOString();
-    console.log(`\n[${timestamp}] --- INICIO PETICIÓN /api/reservas ---`);
-    console.log(`[${timestamp}] Datos recibidos (req.body):`, JSON.stringify(req.body, null, 2));
+    // Importamos sequelize para poder usar transacciones
+    const { sequelize } = require('../models'); 
+    let transaction;
 
     try {
         const { canchaId, fecha, horaInicio, horaTermino, requiereEquipamiento, userRut } = req.body;
 
-        // Validación de campos
+        // --- 1. Validaciones (como las tenías, ¡perfectas!) ---
         if (!canchaId || !fecha || !horaInicio || !horaTermino || requiereEquipamiento === undefined || !userRut) {
-          console.log('[...] VALIDATION_FAIL: Faltan campos obligatorios');
-          return res.status(400).json({ message: 'Faltan campos obligatorios' });
+            return res.status(400).json({ message: 'Faltan campos obligatorios' });
         }
-
+        
         if (!validarRutChileno(userRut)) {
-            console.log(`[${timestamp}] VALIDATION_FAIL: RUT inválido`);
-            return res.status(400).json({ message: 'El RUT ingresado no es válido.' });
+          console.log(`[${timestamp}] VALIDATION_FAIL: RUT inválido`);
+          return res.status(400).json({ message: 'El RUT ingresado no es válido.' });
         }
 
-        // Buscar si la cancha existe
-        const cancha = await Cancha.findByPk(canchaId);
+        // --- 2. Iniciar una transacción ---
+        // Una transacción asegura que AMBAS operaciones (cobrar y reservar) se completen, o NINGUNA.
+        transaction = await sequelize.transaction();
+
+        // --- 3. Obtener datos y calcular costos DENTRO de la transacción ---
+        const cancha = await Cancha.findByPk(canchaId, { transaction });
+        const user = await User.findByPk(userRut, { transaction });
+
         if (!cancha) {
-            console.log(`[${timestamp}] VALIDATION_FAIL: Cancha no encontrada`);
+            await transaction.rollback(); // Deshacer transacción
             return res.status(404).json({ message: 'La cancha especificada no existe.' });
         }
+        if (!user) {
+            await transaction.rollback(); // Deshacer transacción
+            return res.status(404).json({ message: 'El usuario especificado no existe.' });
+        }
+
+        // Cálculo de costo de la cancha
+        const inicio = new Date(`1970-01-01T${horaInicio}Z`);
+        const fin = new Date(`1970-01-01T${horaTermino}Z`);
+        const duracionEnHoras = (fin - inicio) / (1000 * 60 * 60);
+        const costoCancha = duracionEnHoras * 15000; // ¡Usando el precio que especificaste!
+        
+        const COSTO_EQUIPAMIENTO = 5000; // Costo fijo por equipamiento
+        const costoEquipamientoFinal = requiereEquipamiento ? COSTO_EQUIPAMIENTO : 0;
+        
+        const costoTotal = costoCancha + costoEquipamientoFinal;
+
+        // --- 4. VERIFICAR SALDO DEL USUARIO ---
+        if (user.saldo < costoTotal) {
+            await transaction.rollback(); // Deshacer transacción
+            return res.status(402).json({ message: `Saldo insuficiente. Necesitas $${costoTotal} y tienes $${user.saldo}.` });
+        }
+
+        // --- 5. Verificar si hay conflicto de horario (como lo tenías) ---
         const conflicto = await Reserva.findOne({
             where: {
                 canchaId,
                 fecha,
+                estadoReserva: { [Op.ne]: 'CanceladaPorUsuario' }, // No considerar reservas canceladas
                 [Op.or]: [
-                {
-                    horaInicio: {
-                    [Op.between]: [horaInicio, horaTermino]
-                    }
-                },
-                {
-                    horaTermino: {
-                    [Op.between]: [horaInicio, horaTermino]
-                    }
-                },
-                {
-                    [Op.and]: [
-                    { horaInicio: { [Op.lte]: horaInicio } },
-                    { horaTermino: { [Op.gte]: horaTermino } }
-                    ]
-                }
+                    { horaInicio: { [Op.between]: [horaInicio, horaTermino] } },
+                    { horaTermino: { [Op.between]: [horaInicio, horaTermino] } },
+                    { [Op.and]: [{ horaInicio: { [Op.lt]: horaTermino } }, { horaTermino: { [Op.gt]: horaInicio } }] }
                 ]
-            }
-            });
-            if (conflicto) {
-            return res.status(409).json({ message: 'Ya existe una reserva para ese horario en esta cancha.' });
-            }
-        // Definimos un costo para el equipamiento (puedes mover esto a un archivo de config)
-        const COSTO_EQUIPAMIENTO = 5000; // Por ejemplo, 5000 pesos
-
-        const nuevaReserva = await Reserva.create({
-            canchaId: canchaId,
-            userRut: userRut, // <--- CORREGIDO: Usar la variable correcta
-            fecha: fecha,
-            horaInicio: horaInicio,
-            horaTermino: horaTermino,
-            requiereEquipamiento: requiereEquipamiento, // <--- CORREGIDO: Usar la variable correcta
-            costoEquipamiento: requiereEquipamiento ? COSTO_EQUIPAMIENTO : 0, // <--- CORREGIDO: Lógica para el costo
+            },
+            transaction
         });
 
-        console.log(`[${timestamp}] DB_OP_SUCCESS: Reserva creada`, nuevaReserva.toJSON());
+        if (conflicto) {
+            await transaction.rollback(); // Deshacer transacción
+            return res.status(409).json({ message: 'Conflicto: Ya existe una reserva para ese horario en esta cancha.' });
+        }
 
+        // --- 6. Si todo está bien: COBRAR Y CREAR RESERVA ---
+        // Descontar saldo
+        await user.decrement('saldo', { by: costoTotal, transaction });
+
+        // Crear la reserva
+        const nuevaReserva = await Reserva.create({
+            canchaId,
+            userRut,
+            fecha,
+            horaInicio,
+            horaTermino,
+            requiereEquipamiento,
+            costoEquipamiento: costoEquipamientoFinal,
+            // El estado por defecto será 'Pendiente' o 'Confirmada' según tu modelo
+        }, { transaction });
+
+        // --- 7. Confirmar la transacción ---
+        await transaction.commit();
+
+        console.log(`[${timestamp}] PAGO Y RESERVA EXITOSOS`);
         return res.status(201).json({
-            message: 'Reserva creada exitosamente.',
+            message: `Reserva creada y pago de $${costoTotal} realizado exitosamente.`,
             reserva: nuevaReserva
         });
 
     } catch (error) {
-        console.error(`\n[${timestamp}] --- ERROR EN /api/reservas (Bloque Catch) ---`);
-        console.error(error);
-        return res.status(500).json({ message: 'Error al crear la reserva.' });
+        // Si algo falla, la transacción se deshace para no dejar datos inconsistentes
+        if (transaction) await transaction.rollback();
+        console.error(`\n[${timestamp}] --- ERROR EN /api/reservas ---`, error);
+        return res.status(500).json({ message: 'Error interno al crear la reserva.' });
     }
 });
 module.exports = router;

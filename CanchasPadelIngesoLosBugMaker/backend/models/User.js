@@ -45,8 +45,14 @@ const User = sequelize.define('User', {
     allowNull: false,
     defaultValue: 'socio', // Rol por defecto para nuevos usuarios
     comment: 'Rol del usuario (admin o socio)',
-  }
+  },
   // createdAt y updatedAt se añaden automáticamente.
+  saldo: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+    comment: 'Saldo monetario del usuario, en pesos.'
+  }
 }, {
   tableName: 'users', // Nombre explícito de la tabla
   timestamps: true,   // Habilita createdAt y updatedAt (por defecto es true)

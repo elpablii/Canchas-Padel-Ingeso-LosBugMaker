@@ -1,0 +1,122 @@
+/* frontend/src/pages/BilleteraPage.css */
+
+/* Contenedor principal para la página de la billetera */
+.billetera-container {
+  max-width: 700px;
+  margin: 40px auto; /* Centrado y con margen superior/inferior */
+  padding: 30px 40px; /* Más padding horizontal */
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.billetera-container h1 {
+  color: #2c3e50;
+  margin-bottom: 30px;
+  font-size: 2em;
+}
+
+/* Caja grande que muestra el saldo actual */
+.saldo-display {
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  color: white;
+  padding: 25px 30px;
+  border-radius: 10px;
+  margin-bottom: 40px;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.saldo-display p {
+  margin: 0;
+  font-size: 1.2em;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  opacity: 0.9;
+}
+
+.saldo-display h2 {
+  margin: 5px 0 0 0;
+  font-size: 3.8em;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+
+/* Estilo para el formulario de recarga */
+.form-recarga {
+  background-color: #f9f9f9;
+  padding: 30px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.form-recarga h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.form-recarga p {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.form-recarga .form-group {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.form-recarga label {
+  font-weight: 600;
+  font-size: 1.1em;
+}
+
+.form-recarga input[type="number"] {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1.2em;
+  width: 180px;
+  text-align: center;
+}
+
+.btn-recargar {
+  display: block;
+  width: 100%;
+  padding: 15px;
+  margin-top: 25px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.2em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-recargar:hover {
+  background-color: #218838;
+}
+
+/* Estilos para los mensajes de éxito y error */
+.success-message, .error-message {
+  padding: 12px;
+  margin-top: 20px;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 1em;
+}
+
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+}

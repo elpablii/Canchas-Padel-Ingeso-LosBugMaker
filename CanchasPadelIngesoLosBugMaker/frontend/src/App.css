@@ -129,3 +129,48 @@ body {
   padding: 20px;   /* Espacio alrededor del contenido de la página */
   /* No establezcas un min-height aquí si las páginas individuales lo manejan */
 }
+
+/* Contenedor para la información del usuario en la navbar */
+.navbar-user-info {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* Espacio entre el saludo "Hola,..." y el saldo */
+  margin-right: 15px;
+  color: white;
+}
+
+/* Estilo para el indicador de saldo, que también es un enlace */
+.navbar-saldo {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #a7d7ff; /* Un color cian claro para que destaque sutilmente */
+  padding: 5px 12px;
+  border-radius: 15px; /* Lo hace tipo "píldora" */
+  font-weight: bold;
+  font-size: 0.9em;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Efecto hover para el indicador de saldo */
+.navbar-saldo:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Estilo para el botón de cerrar sesión para que se vea mejor */
+.navbar-logout-btn {
+    background: none; 
+    border: 1px solid #ff7b7b; /* Borde rojo sutil */
+    color: #ffc1c1; /* Texto rojo claro */
+    cursor: pointer; 
+    padding: 8px 15px;
+    font-size: inherit;
+    border-radius: 5px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.navbar-logout-btn:hover {
+    background-color: #ff7b7b;
+    color: white;
+}

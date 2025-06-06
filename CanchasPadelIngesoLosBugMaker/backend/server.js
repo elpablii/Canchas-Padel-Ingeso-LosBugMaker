@@ -22,6 +22,7 @@ const adminRoutes = require('./routes/adminRoutes');
 // const canchasRoutes = require('./routes/canchasRoutes'); // <--- LÍNEA COMENTADA
 const reservaRoutes = require('./routes/reservas'); 
 const availabilityRoutes = require('./routes/disponibilidad');
+const userRoutes = require('./routes/userRoutes'); 
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -44,7 +45,7 @@ app.use('/api/admin', adminRoutes);
 // app.use('/api/canchas', canchasRoutes); // <--- LÍNEA COMENTADA
 app.use('/api/reservas', reservaRoutes); // Asegúrate que este archivo exista o coméntalo también
 app.use('/api/disponibilidad', availabilityRoutes); // Asegúrate que este archivo exista o coméntalo también
-
+app.use('/api/users', userRoutes);
 
 // --- Sincronización y Arranque ---
 const startServer = async () => {
