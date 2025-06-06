@@ -3,29 +3,29 @@ const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
 const Reserva = sequelize.define('Reserva', {
-  id: { // Corresponde a tu id_reserva
+  id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
     primaryKey: true,
     allowNull: false,
   },
-  // userRut y canchaId serán añadidas por Sequelize y definidas en models/index.js
+  
   fecha: {
     type: DataTypes.DATEONLY, 
     allowNull: false,
-    field: 'fechaReserva', // <-- AÑADE ESTA LÍNEA
+    field: 'fechaReserva',
     comment: 'Fecha para la cual se realiza la reserva',
   },
-  horaInicio: { // Corresponde a tu hora_inicio
+  horaInicio: {
     type: DataTypes.TIME, 
     allowNull: false,
     comment: 'Hora de inicio de la reserva',
   },
-  horaTermino: { // Corresponde a tu hora_termino
+  horaTermino: {
     type: DataTypes.TIME, 
     allowNull: false,
     comment: 'Hora de finalización de la reserva',
-    validate: { // Buena validación, la mantendremos
+    validate: {
       isTimeValid() {
         if (this.horaTermino <= this.horaInicio) {
           throw new Error('La hora de fin debe ser posterior a la de inicio.');
@@ -33,13 +33,13 @@ const Reserva = sequelize.define('Reserva', {
       }
     }
   },
-  requiereEquipamiento: { // Corresponde a tu equipamiento (sí o no)
+  requiereEquipamiento: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false,
     comment: 'Indica si el usuario solicitó equipamiento (true/false)',
   },
-  costoEquipamiento: { // Corresponde a tu boleta_equipamiento
+  costoEquipamiento: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
     defaultValue: 0.00,
