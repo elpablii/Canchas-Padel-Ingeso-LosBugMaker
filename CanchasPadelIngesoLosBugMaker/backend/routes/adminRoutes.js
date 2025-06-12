@@ -62,4 +62,31 @@ router.get('/users', async (req, res) => {
     }
 });
 
+
+router.post('/canchas', async (req, res) => {
+  try {
+    const { nombre, costo } = req.body;
+    // Validaciones básicas
+    if (!nombre || costo === undefined) {
+      return res.status(400).json({ message: 'El nombre y el costo son obligatorios.' });
+    }
+    if (typeof nombre !== 'string' || nombre.trim().length < 2) {
+      return res.status(400).json({ message: 'El nombre debe ser un texto de al menos 2 caracteres.' });
+    }
+    const costoNum = Number(costo);
+    if (isNaN(costoNum) || costoNum < 0) {
+      return res.status(400).json({ message: 'El costo debe ser un número positivo.' });
+    }
+    // Crear la cancha
+    const nuevaCancha = await Cancha.create({ nombre: nombre.trim(), costo: costoNum });
+    res.status(201).json({ message: 'Cancha registrada exitosamente.', cancha: nuevaCancha });
+  } catch (error) {
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({ message: 'Ya existe una cancha con ese nombre.' });
+    }
+    console.error('Error al registrar cancha:', error);
+    res.status(500).json({ message: 'Error interno al registrar la cancha.' });
+  }
+});
+
 module.exports = router;
