@@ -4,22 +4,25 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px;
+  padding: 2rem;
   background-color: #f4f7f6; /* Un fondo suave para la página */
   min-height: calc(100vh - 120px); /* Ajusta según la altura de tu Navbar y Footer */
   box-sizing: border-box;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .user-homepage-header {
   text-align: center;
-  margin-bottom: 20px; /* Reducido un poco el margen */
+  margin-bottom: 2rem;
   color: #333;
 }
 
 .user-homepage-header h1 {
-  font-size: 2.2em;
+  font-size: 2.5rem;
   font-weight: 600;
   color: #2c3e50;
+  margin-bottom: 1rem;
 }
 
 .user-homepage-content p {
@@ -31,59 +34,12 @@
 }
 
 /* Nueva sección para los botones de acción */
-.user-actions-section {
-  text-align: center;
-  margin-bottom: 30px;
-  width: 100%;
-  max-width: 600px;
-}
-
-.user-actions-section h2 {
-  font-size: 1.6em;
-  color: #34495e;
-  margin-bottom: 20px;
-}
-
-.action-buttons-container {
+.user-homepage-actions {
   display: flex;
-  flex-direction: column; /* Apila los botones en móviles */
-  gap: 15px; /* Espacio entre botones */
-}
-
-.action-button {
-  display: block; /* Hace que el Link ocupe todo el ancho disponible */
-  padding: 15px 25px;
-  font-size: 1.1em;
-  font-weight: bold;
-  text-decoration: none;
-  border-radius: 8px; /* Bordes más redondeados */
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-  text-align: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.action-button.primary-action {
-  background-color: #3498db; /* Un azul atractivo */
-  color: white;
-}
-
-.action-button.primary-action:hover {
-  background-color: #2980b9;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.action-button.secondary-action {
-  background-color: #ecf0f1; /* Un gris claro */
-  color: #34495e; /* Texto oscuro para contraste */
-  border: 1px solid #bdc3c7; /* Un borde sutil */
-}
-
-.action-button.secondary-action:hover {
-  background-color: #dde1e2;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
 }
 
 .user-data-section {
@@ -136,14 +92,99 @@
   transform: translateY(-2px);
 }
 
-/* Media query para pantallas más grandes (ej. escritorio) */
-@media (min-width: 600px) {
-  .action-buttons-container {
-    flex-direction: row; /* Botones en línea en pantallas más grandes */
-    justify-content: center; /* Centra los botones en la fila */
+.action-buttons-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.action-button {
+  width: 100%;
+  max-width: 350px;
+  margin-bottom: 0;
+  padding: 1.2rem 0.8rem;
+  /* padding vertical grande, horizontal reducido */
+}
+
+.action-button:hover {
+  background-color: #45a049;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.action-button.logout-button {
+  background-color: #f44336;
+}
+
+.action-button.logout-button:hover {
+  background-color: #d32f2f;
+}
+
+.notificaciones-section {
+  margin: 2rem auto;
+  max-width: 800px;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Ajustes para el componente Notificaciones dentro del UserHomePage */
+.notificaciones-section .notificaciones-toggle {
+  display: none;
+}
+
+.notificaciones-section .notificaciones-dropdown {
+  position: static;
+  box-shadow: none;
+  margin-top: 0;
+  max-height: 500px;
+}
+
+@media (max-width: 768px) {
+  .user-homepage-actions {
+    flex-direction: column;
+    align-items: center;
   }
+
   .action-button {
-    margin: 0 10px; /* Añade espacio horizontal entre botones en modo fila */
-    min-width: 200px; /* Un ancho mínimo para que se vean bien */
+    width: 100%;
+    max-width: 300px;
   }
+}
+
+.primary-action {
+  background-color: #4CAF50;
+  color: #fff;
+}
+.primary-action:hover {
+  background-color: #388e3c;
+}
+
+.secondary-action {
+  background-color: #1976d2;
+  color: #fff;
+}
+.secondary-action:hover {
+  background-color: #115293;
+}
+
+.historial-action {
+  background-color: #6c757d;
+  color: #fff;
+  font-weight: bold;
+}
+.historial-action:hover {
+  background-color: #495057;
+}
+
+.notificaciones-action {
+  background-color: #111;
+  color: #fff;
+  font-weight: bold;
+}
+.notificaciones-action:hover {
+  background-color: #333;
 }

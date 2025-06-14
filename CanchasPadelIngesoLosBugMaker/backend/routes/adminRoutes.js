@@ -4,6 +4,9 @@ const router = express.Router();
 // Asumimos que models/index.js exporta tus modelos
 const { Reserva, User, Cancha } = require('../models'); 
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
+const { notificarATodos } = require('../services/notificacionService');
+const { verificarToken, verificarAdmin } = require('../middleware/auth');
+const authMiddleware = require('../middleware/authMiddleware');
 
 // Este middleware se aplica a TODAS las rutas definidas en este archivo.
 router.use(adminAuthMiddleware);
@@ -63,6 +66,11 @@ router.get('/users', async (req, res) => {
 });
 
 
+/**
+ * @route   POST /api/admin/canchas
+ * @desc    Registrar una nueva cancha
+ * @access  Private (Admin)
+ */
 router.post('/canchas', async (req, res) => {
   try {
     const { nombre, costo } = req.body;
@@ -79,6 +87,13 @@ router.post('/canchas', async (req, res) => {
     }
     // Crear la cancha
     const nuevaCancha = await Cancha.create({ nombre: nombre.trim(), costo: costoNum });
+
+    // Notificar a todos los usuarios sobre la nueva cancha
+    await notificarATodos(
+      'NUEVA_CANCHA',
+      `¡Nueva cancha disponible! ${nombre} - Costo: $${costoNum.toLocaleString('es-CL')}`
+    );
+
     res.status(201).json({ message: 'Cancha registrada exitosamente.', cancha: nuevaCancha });
   } catch (error) {
     if (error.name === 'SequelizeUniqueConstraintError') {
@@ -86,6 +101,21 @@ router.post('/canchas', async (req, res) => {
     }
     console.error('Error al registrar cancha:', error);
     res.status(500).json({ message: 'Error interno al registrar la cancha.' });
+  }
+});
+
+// Enviar notificación a todos los usuarios
+router.post('/notificaciones', adminAuthMiddleware, async (req, res) => {
+  const { mensaje } = req.body;
+  if (!mensaje || typeof mensaje !== 'string' || mensaje.trim().length === 0) {
+    return res.status(400).json({ mensaje: 'El mensaje es requerido.' });
+  }
+  try {
+    await notificarATodos('OTRO', mensaje.trim());
+    res.json({ mensaje: 'Notificación enviada a todos los usuarios.' });
+  } catch (error) {
+    console.error('Error al enviar notificación:', error);
+    res.status(500).json({ mensaje: 'Error interno al enviar la notificación.' });
   }
 });
 

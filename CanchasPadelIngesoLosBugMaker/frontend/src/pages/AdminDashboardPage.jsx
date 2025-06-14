@@ -24,6 +24,13 @@ function AdminDashboardPage() {
   // Estado para mostrar/ocultar el historial de reservas
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
 
+  // Estado para mostrar/ocultar el formulario de notificación
+  const [mostrarFormularioNotificacion, setMostrarFormularioNotificacion] = useState(false);
+  const [mensajeNotificacion, setMensajeNotificacion] = useState("");
+  const [notiMsg, setNotiMsg] = useState("");
+  const [notiError, setNotiError] = useState("");
+  const [notiLoading, setNotiLoading] = useState(false);
+
   // --- NUEVA FUNCIÓN: Registrar cancha ---
   const handleRegisterCancha = async (e) => {
     e.preventDefault();
@@ -85,6 +92,38 @@ function AdminDashboardPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Función para enviar notificación a todos
+  const handleEnviarNotificacion = async (e) => {
+    e.preventDefault();
+    setNotiMsg("");
+    setNotiError("");
+    setNotiLoading(true);
+    try {
+      const response = await fetch('/api/admin/notificaciones', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ mensaje: mensajeNotificacion })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.mensaje || 'Error al enviar la notificación.');
+      }
+      setNotiMsg('¡Notificación enviada a todos los usuarios!');
+      setMensajeNotificacion("");
+      setTimeout(() => {
+        setMostrarFormularioNotificacion(false);
+        setNotiMsg("");
+      }, 1500);
+    } catch (err) {
+      setNotiError(err.message);
+    } finally {
+      setNotiLoading(false);
     }
   };
 
@@ -236,6 +275,43 @@ function AdminDashboardPage() {
           )}
         </main>
       )}
+
+      {/* --- BOTÓN Y FORMULARIO DE NOTIFICACIÓN --- */}
+      <section className="admin-notificacion-section">
+        {!mostrarFormularioNotificacion && !mostrarFormularioCancha && !mostrarHistorial && (
+          <button
+            className="btn btn-secondary"
+            onClick={() => setMostrarFormularioNotificacion(true)}
+            style={{ marginBottom: '1rem' }}
+          >
+            Enviar Notificación
+          </button>
+        )}
+        {mostrarFormularioNotificacion && (
+          <form className="notificacion-form" onSubmit={handleEnviarNotificacion}>
+            <label htmlFor="mensajeNotificacion"><b>Mensaje de Notificación:</b></label>
+            <textarea
+              id="mensajeNotificacion"
+              value={mensajeNotificacion}
+              onChange={e => setMensajeNotificacion(e.target.value)}
+              rows={3}
+              required
+              placeholder="Escribe el mensaje para todos los usuarios..."
+              style={{ width: '100%', marginBottom: '1rem', borderRadius: '8px', padding: '10px', fontSize: '1.1em' }}
+            />
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button type="submit" className="btn btn-primary" disabled={notiLoading}>
+                {notiLoading ? 'Enviando...' : 'Enviar'}
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setMostrarFormularioNotificacion(false)}>
+                Cancelar
+              </button>
+            </div>
+            {notiMsg && <div className="success-message" style={{ marginTop: '1rem' }}>{notiMsg}</div>}
+            {notiError && <div className="error-message" style={{ marginTop: '1rem' }}>{notiError}</div>}
+          </form>
+        )}
+      </section>
 
       {/* El mensaje y el botón de cerrar sesión solo aparecen si no se muestra el formulario ni el historial */}
       {!mostrarFormularioCancha && !mostrarHistorial && (

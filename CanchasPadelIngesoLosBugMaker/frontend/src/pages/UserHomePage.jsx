@@ -1,12 +1,14 @@
 // frontend/src/pages/UserHomePage.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom'; // Importa Link
+import Notificaciones from '../components/Notificaciones';
 import './UserHomePage.css'; // Importa el archivo CSS
 
 function UserHomePage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [mostrarNotificaciones, setMostrarNotificaciones] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -44,11 +46,23 @@ function UserHomePage() {
           <Link to="/disponibilidad-canchas" className="action-button secondary-action">
             Ver Disponibilidad de Canchas
           </Link>
-          <Link to="/historial-reservas" className="btn btn-secondary">
+          <Link to="/historial-reservas" className="action-button historial-action">
             Ver Historial de Reservas
           </Link>
+          <button 
+            className="action-button notificaciones-action"
+            onClick={() => setMostrarNotificaciones(!mostrarNotificaciones)}
+          >
+            {mostrarNotificaciones ? 'Ocultar Notificaciones' : 'Ver Notificaciones'}
+          </button>
         </div>
       </section>
+      
+      {mostrarNotificaciones && (
+        <div className="notificaciones-section">
+          <Notificaciones />
+        </div>
+      )}
       
       <section className="user-data-section">
         <h3>Tus Datos Registrados:</h3>

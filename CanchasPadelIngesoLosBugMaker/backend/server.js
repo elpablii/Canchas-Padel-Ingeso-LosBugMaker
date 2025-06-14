@@ -23,6 +23,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const reservaRoutes = require('./routes/reservas'); 
 const availabilityRoutes = require('./routes/disponibilidad');
 const userRoutes = require('./routes/userRoutes'); 
+const notificacionRoutes = require('./routes/notificacionRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -46,6 +47,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/reservas', reservaRoutes); // Asegúrate que este archivo exista o coméntalo también
 app.use('/api/disponibilidad', availabilityRoutes); // Asegúrate que este archivo exista o coméntalo también
 app.use('/api/users', userRoutes);
+app.use('/api/notificaciones', notificacionRoutes);
 
 // --- Sincronización y Arranque ---
 const startServer = async () => {
