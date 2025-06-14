@@ -59,7 +59,7 @@ function ReservationForm({ court, date, onClose }) {
   return (
     // Mantenemos tu estructura JSX original
     <div style={{ marginTop: '20px', padding: '20px', border: '1px solid #aaa' }}>
-      <h3>Reserve {court.nombre || `Court ${court.id}`} en la fecha {date}</h3>
+      <h3>Reserva para {court.nombre || `Court ${court.id}`} en la fecha {date}</h3>
       <form onSubmit={handleSubmit}>
         <label>Hora de inicio:</label>
         <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />

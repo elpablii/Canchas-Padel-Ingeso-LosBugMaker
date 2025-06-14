@@ -6,8 +6,8 @@ function ReservationPage() {
 
   return (
     <div style={{ padding: '20px' }}>
-      <h2>Reserve a Court</h2>
-      <label>Select a date:</label>
+      <h2>Reserve su Cancha</h2>
+      <label>Seleccione una hora: </label>
       <input
         type="date"
         value={date}

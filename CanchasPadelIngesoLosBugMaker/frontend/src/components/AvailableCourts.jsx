@@ -34,11 +34,11 @@ function AvailableCourts({ date }) {
 
   return (
     <div>
-      <h3>Available Courts for {date}</h3>
+      <h3>Canchas disponibles para: {date}</h3>
 
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
-      {courts.length === 0 && !error && <p>No courts available for this date.</p>}
+      {courts.length === 0 && !error && <p>Lo sentimos, no hay canchas disponibles para esta fecha.</p>}
 
       <div style={{
         display: 'grid',
@@ -62,7 +62,7 @@ function AvailableCourts({ date }) {
             onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-          <h4>{court.name || `Cancha ${court.id}`}</h4>
+          <h4>{court.name || `${court.nombre}`}</h4>
           <p><strong>ID:</strong> {court.id}</p>
           <p>
             <strong>Valor de reserva:</strong>{' '}

@@ -6,6 +6,9 @@ const Cancha = require('../models/Cancha');
 const { Op } = require('sequelize');
 const { sequelize } = require('../models');
 const { enviarEmailConfirmacion } = require('../services/emailService');
+const moment = require('moment-timezone');
+
+const TIMEZONE = 'America/Santiago';
 
 // --- Helper: Validación de RUT chileno ---
 const validarRutChileno = (rutCompleto) => {
@@ -20,7 +23,6 @@ const validarRutChileno = (rutCompleto) => {
 };
 
 // --- Ruta: POST /api/reservas ---
-
 router.get('/historial/:userRut', async (req, res) => { // <-- 1. Parámetro corregido
   try {
     const { userRut } = req.params; // <-- 2. Variable corregida
@@ -71,14 +73,14 @@ router.put('/:id/cancelar', async (req, res) => {
       return res.status(400).json({ message: 'La reserva ya se encuentra cancelada.' });
     }
     
-    // 2. REGLA DE NEGOCIO: No cancelar si faltan menos de 24 horas
-    const ahora = new Date();
-    const inicioReserva = new Date(`${reserva.fecha}T${reserva.horaInicio}`);
-    const horasDeDiferencia = (inicioReserva - ahora) / (1000 * 60 * 60);
+    // 2. 1 semana de anticipacion
+    const ahora = moment().tz(TIMEZONE);
+    const inicioReserva = moment.tz(`${reserva.fecha} ${reserva.horaInicio}`, 'YYYY-MM-DD HH:mm:ss', TIMEZONE);
+    const diasDeDiferencia = inicioReserva.diff(ahora, 'days');
 
-    if (horasDeDiferencia < 24) {
-      await transaction.rollback();
-      return res.status(403).json({ message: 'No se puede cancelar una reserva con menos de 24 horas de antelación.' });
+    if (diasDeDiferencia < 7) {
+        await transaction.rollback();
+        return res.status(403).json({ message: 'No se puede cancelar una reserva con menos de 1 semana de anticipación.' });
     }
 
     // 3. ACTUALIZAR ESTADO DE LA RESERVA
@@ -147,7 +149,7 @@ router.put('/:id/confirmar', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-    const timestamp = new Date().toISOString();
+    const timestamp = moment().tz(TIMEZONE).format('YYYY-MM-DD HH:mm:ss');
     let transaction;
 
     try {
@@ -162,6 +164,48 @@ router.post('/', async (req, res) => {
           console.log(`[${timestamp}] VALIDATION_FAIL: RUT inválido`);
           return res.status(400).json({ message: 'El RUT ingresado no es válido.' });
         }
+
+        const reservaFechaMoment = moment.tz(fecha, 'YYYY-MM-DD', TIMEZONE).startOf('day');
+        const reservaHoraInicioMoment = moment.tz(`${fecha} ${horaInicio}`, 'YYYY-MM-DD HH:mm', TIMEZONE);
+        const reservaHoraTerminoMoment = moment.tz(`${fecha} ${horaTermino}`, 'YYYY-MM-DD HH:mm', TIMEZONE);
+
+        // Calcular duración en minutos
+        const duracionMinutos = reservaHoraTerminoMoment.diff(reservaHoraInicioMoment, 'minutes');
+
+        // --- VALIDACIÓN: Duración Mínima/Máxima (90 a 180 minutos) 
+        if (duracionMinutos < 90 || duracionMinutos > 180) {
+            console.log(`[${timestamp}] VALIDATION_FAIL: Duración de reserva inválida (${duracionMinutos} min).`);
+            return res.status(400).json({ message: `La duración de la reserva debe ser entre 90 y 180 minutos. Duración solicitada: ${duracionMinutos} minutos.` });
+        }
+        if (reservaHoraTerminoMoment.isSameOrBefore(reservaHoraInicioMoment)) {
+            console.log(`[${timestamp}] VALIDATION_FAIL: Hora de término no es posterior a la de inicio.`);
+            return res.status(400).json({ message: 'La hora de término debe ser posterior a la hora de inicio.' });
+        }
+
+        // VALIDACIÓN: Rango de Horario (8:00 a 20:00) 
+        const horaLimiteInicio = reservaFechaMoment.clone().set({ hour: 8, minute: 0, second: 0 });
+        const horaLimiteFin = reservaFechaMoment.clone().set({ hour: 20, minute: 0, second: 0 }); // 20:00 es el límite final.
+
+        if (reservaHoraInicioMoment.isBefore(horaLimiteInicio) || reservaHoraTerminoMoment.isAfter(horaLimiteFin)) {
+            console.log(`[${timestamp}] VALIDATION_FAIL: Horario fuera de rango (8:00 a 20:00). Inicio: ${reservaHoraInicioMoment.format('HH:mm')}, Fin: ${reservaHoraTerminoMoment.format('HH:mm')}.`);
+            return res.status(400).json({ message: 'Las reservas solo pueden ser entre las 08:00 y las 20:00 hrs.' });
+        }
+        // VALIDACIÓN: Dias de semana
+        const diaSemana = reservaFechaMoment.day(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        if (diaSemana === 0 || diaSemana === 6) { // If it's Sunday (0) or Saturday (6)
+            console.log(`[${timestamp}] VALIDATION_FAIL: Día de semana no permitido (${reservaFechaMoment.format('dddd')}).`);
+            return res.status(400).json({ message: 'Las reservas solo se pueden realizar de Lunes a Viernes.' });
+        }
+
+                // --- NUEVA VALIDACIÓN 1: Reservar con 1 semana de anticipación mínimo ---
+        const ahora = moment().tz(TIMEZONE); // Hora actual
+        const unaSemanaDesdeAhora = ahora.clone().add(7, 'days').startOf('day'); // Fecha de hoy + 7 días, al inicio del día
+
+        if (reservaFechaMoment.isBefore(unaSemanaDesdeAhora)) {
+            console.log(`[${timestamp}] VALIDATION_FAIL: Reserva con menos de 1 semana de anticipación. Fecha solicitada: ${reservaFechaMoment.format('YYYY-MM-DD')}, Mínimo permitido: ${unaSemanaDesdeAhora.format('YYYY-MM-DD')}`);
+            return res.status(400).json({ message: 'Las reservas deben realizarse con al menos 1 semana de anticipación.' });
+        }
+
 
         // --- 2. Iniciar una transacción ---
         // Una transacción asegura que AMBAS operaciones (cobrar y reservar) se completen, o NINGUNA.
@@ -179,6 +223,57 @@ router.post('/', async (req, res) => {
             await transaction.rollback(); // Deshacer transacción
             return res.status(404).json({ message: 'El usuario especificado no existe.' });
         }
+
+        // --- 5. VALIDACIONES COMPLEJAS CON BDD ---
+
+        // Se obtiene la línea de tiempo completa del día. Esta variable es ESENCIAL para las siguientes validaciones.
+        const timelineDelDia = await Reserva.findAll({
+            where: {
+                fecha: fecha,
+                estadoReserva: { [Op.notIn]: ['CanceladaPorUsuario', 'CanceladaPorAdmin', 'NoAsistio'] }
+            },
+            order: [['horaInicio', 'ASC']],
+            transaction
+        });
+
+        const reservasPreviasUsuario = timelineDelDia.filter(res => res.userRut === userRut);
+
+        // REGLA: Límite de 180 minutos diarios por usuario
+        const minutosYaReservados = reservasPreviasUsuario.reduce((total, res) => 
+            total + moment.duration(moment(res.horaTermino, 'HH:mm:ss').diff(moment(res.horaInicio, 'HH:mm:ss'))).asMinutes(), 0);
+
+        if (minutosYaReservados + duracionMinutos > 180) {
+            await transaction.rollback();
+            return res.status(403).json({ message: `Superas el límite de 180 minutos diarios. Ya tienes ${minutosYaReservados} min reservados.` });
+        }
+
+        // REGLA CLAVE: "NO DEJAR HUECOS"
+        if (reservasPreviasUsuario.length > 0) {
+            // Encuentra la última reserva del usuario en el día
+            const ultimaReservaUsuario = reservasPreviasUsuario[reservasPreviasUsuario.length - 1];
+            const finUltimaReserva = ultimaReservaUsuario.horaTermino;
+
+            // Busca si hay alguna reserva (de cualquier usuario) que comience justo cuando termina la del usuario
+            const hayReservaConsecutiva = timelineDelDia.some(res => res.horaInicio === finUltimaReserva);
+
+            // Si el bloque siguiente está libre Y el usuario no está intentando tomar ESE bloque exacto
+            if (!hayReservaConsecutiva && horaInicio !== finUltimaReserva) {
+                await transaction.rollback();
+                return res.status(409).json({ message: `Debes esperar la reserva del bloque que comienza a las ${finUltimaReserva}. Cancela la reserva y aumenta la duracion de reserva` });
+            }
+        }
+
+        // REGLA: Disponibilidad general de la cancha (previene solapamientos)
+        const conflictoCancha = timelineDelDia.some(res => 
+            res.canchaId === canchaId && 
+            res.horaInicio < horaTermino && 
+            res.horaTermino > horaInicio
+        );
+        if (conflictoCancha) {
+            await transaction.rollback();
+            return res.status(409).json({ message: 'Este horario ya no está disponible en esta cancha.' });
+        }
+
 
         // Cálculo de costo de la cancha
         const inicio = new Date(`1970-01-01T${horaInicio}Z`);
@@ -264,4 +359,5 @@ router.post('/', async (req, res) => {
         return res.status(500).json({ message: 'Error interno al crear la reserva.' });
     }
 });
+
 module.exports = router;
