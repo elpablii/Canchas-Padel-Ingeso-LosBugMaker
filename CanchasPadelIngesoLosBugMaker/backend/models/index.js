@@ -35,6 +35,7 @@ Object.keys(db).forEach(modelName => {
 const User = db.User;
 const Cancha = db.Cancha;
 const Reserva = db.Reserva;
+const Jugador = db.Jugador;
 
 if (User && Reserva && Cancha) {
   // User <-> Reserva
@@ -55,6 +56,24 @@ if (User && Reserva && Cancha) {
   Reserva.belongsTo(Cancha, {
     foreignKey: { name: 'canchaId', type: DataTypes.INTEGER, allowNull: false },
     as: 'cancha' // Alias para la cancha de una reserva
+  });
+
+    // Reserva <-> Jugador
+  Reserva.hasMany(Jugador, {
+    as: 'jugadores',
+    foreignKey: {
+        name: 'reservaId',
+        type: DataTypes.INTEGER,
+        allowNull: false
+    },
+    onDelete: 'CASCADE'
+  });
+  Jugador.belongsTo(Reserva, {
+    foreignKey: {
+        name: 'reservaId',
+        type: DataTypes.INTEGER,
+        allowNull: false
+    }
   });
 
   console.log("Asociaciones User-Reserva y Cancha-Reserva definidas con alias únicos.");

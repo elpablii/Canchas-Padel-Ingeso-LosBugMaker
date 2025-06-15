@@ -31,6 +31,11 @@ const Cancha = sequelize.define('Cancha', {
       }
     },
     comment: 'Costo de la reserva de la cancha (por hora o por turno, según definas su uso)',
+  },
+  maxJugadores: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 4
   }
   
 }, {

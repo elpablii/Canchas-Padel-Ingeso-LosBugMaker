@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const Reserva = require('../models/Reserva');
-const User = require('../models/User');
-const Cancha = require('../models/Cancha');
-const { Op } = require('sequelize');
-const { sequelize } = require('../models');
-const { enviarEmailConfirmacion } = require('../services/emailService');
 const moment = require('moment-timezone');
+const { Op } = require('sequelize');
 
+// --- CORRECCIÓN CLAVE: Importar todos los modelos desde el index ---
+// Esto asegura que los modelos tengan sus asociaciones cargadas.
+const { Reserva, User, Cancha, Jugador, sequelize } = require('../models');
+
+const { enviarEmailConfirmacion } = require('../services/emailService');
 const TIMEZONE = 'America/Santiago';
 
 // --- Helper: Validación de RUT chileno ---
@@ -153,11 +153,14 @@ router.post('/', async (req, res) => {
     let transaction;
 
     try {
-        const { canchaId, fecha, horaInicio, horaTermino, requiereEquipamiento, userRut } = req.body;
+        const { canchaId, fecha, horaInicio, horaTermino, requiereEquipamiento, userRut, jugadores } = req.body;
 
         // --- 1. Validaciones (como las tenías, ¡perfectas!) ---
-        if (!canchaId || !fecha || !horaInicio || !horaTermino || requiereEquipamiento === undefined || !userRut) {
+        if (!canchaId || !fecha || !horaInicio || !horaTermino || requiereEquipamiento === undefined || !userRut || !jugadores) {
             return res.status(400).json({ message: 'Faltan campos obligatorios' });
+        }
+        if (!Array.isArray(jugadores) || jugadores.length === 0) {
+            return res.status(400).json({ message: 'Debe registrar al menos un jugador.' });
         }
         
         if (!validarRutChileno(userRut)) {
@@ -197,7 +200,7 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ message: 'Las reservas solo se pueden realizar de Lunes a Viernes.' });
         }
 
-                // --- NUEVA VALIDACIÓN 1: Reservar con 1 semana de anticipación mínimo ---
+        // Reservar con 1 semana de anticipación mínimo 
         const ahora = moment().tz(TIMEZONE); // Hora actual
         const unaSemanaDesdeAhora = ahora.clone().add(7, 'days').startOf('day'); // Fecha de hoy + 7 días, al inicio del día
 
@@ -247,6 +250,12 @@ router.post('/', async (req, res) => {
             return res.status(403).json({ message: `Superas el límite de 180 minutos diarios. Ya tienes ${minutosYaReservados} min reservados.` });
         }
 
+        if (jugadores.length > cancha.maxJugadores) {
+          await transaction.rollback();
+          return res.status(409).json({ message: `El número de jugadores (${jugadores.length}) excede el máximo permitido para esta cancha (${cancha.maxJugadores}).` });
+        }
+
+
         // REGLA CLAVE: "NO DEJAR HUECOS"
         if (reservasPreviasUsuario.length > 0) {
             // Encuentra la última reserva del usuario en el día
@@ -281,7 +290,7 @@ router.post('/', async (req, res) => {
         const duracionEnHoras = (fin - inicio) / (1000 * 60 * 60);
         const costoCancha = duracionEnHoras * 15000; // ¡Usando el precio que especificaste!
         
-        const COSTO_EQUIPAMIENTO = 5000; // Costo fijo por equipamiento
+        const COSTO_EQUIPAMIENTO = 1000; // Costo fijo por equipamiento
         const costoEquipamientoFinal = requiereEquipamiento ? COSTO_EQUIPAMIENTO : 0;
         
         const costoTotal = costoCancha + costoEquipamientoFinal;
@@ -328,6 +337,15 @@ router.post('/', async (req, res) => {
             // El estado por defecto será 'Pendiente' o 'Confirmada' según tu modelo
         }, { transaction });
 
+        // --- 6. GUARDAR LOS JUGADORES ASOCIADOS A LA RESERVA ---
+        // Añadimos el ID de la reserva a cada jugador
+        const jugadoresParaCrear = jugadores.map(jugador => ({
+            ...jugador,
+            reservaId: nuevaReserva.id // Asociamos cada jugador con la reserva recién creada
+        }));
+
+        await Jugador.bulkCreate(jugadoresParaCrear, { transaction });
+
         // --- 7. Confirmar la transacción ---
         await transaction.commit();
         
@@ -339,12 +357,6 @@ router.post('/', async (req, res) => {
           console.error('El correo de confirmación no se pudo enviar, pero la reserva fue exitosa.', emailError);
         }
         // --- FIN DEL BLOQUE DE CORREO ---
-
-        console.log(`[${timestamp}] PAGO Y RESERVA EXITOSOS`);
-        return res.status(201).json({
-            message: `Reserva creada y pago de $${costoTotal} realizado exitosamente.`,
-            reserva: nuevaReserva
-        });
 
         console.log(`[${timestamp}] PAGO Y RESERVA EXITOSOS`);
         return res.status(201).json({
