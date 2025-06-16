@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import AdminDisponibilidad from '../components/AdminDisponibilidad.jsx';
 import ReportePagosPage from './ReportePagosPage.jsx'; 
@@ -13,6 +13,7 @@ function AdminDashboardPage() {
   const [mostrarFormularioNotificacion, setMostrarFormularioNotificacion] = useState(false);
   const [mostrarGestionDisponibilidad, setMostrarGestionDisponibilidad] = useState(false); // <-- NUEVO ESTADO
   const [mostrarReportePagos, setMostrarReportePagos] = useState(false);
+  const [mostrarCrearReserva, setMostrarCrearReserva] = useState(false);
 
   // Estados para los formularios y datos
   const [nombreCancha, setNombreCancha] = useState('');
@@ -31,8 +32,128 @@ function AdminDashboardPage() {
   const [notiError, setNotiError] = useState("");
   const [notiLoading, setNotiLoading] = useState(false);
 
-  // Variable para saber si se está mostrando alguna sección y así ocultar el menú principal
-  const mostrandoSeccion = mostrarFormularioCancha || mostrarHistorial || mostrarFormularioNotificacion || mostrarGestionDisponibilidad || mostrarReportePagos;
+   // ---> AÑADIDO: Todos los estados necesarios para el nuevo flujo de creación de reserva
+  const [selectedDate, setSelectedDate] = useState('');
+  const [availableCourts, setAvailableCourts] = useState([]);
+  const [selectedCourt, setSelectedCourt] = useState(null);
+  const [courtFetchLoading, setCourtFetchLoading] = useState(false);
+  const [courtFetchError, setCourtFetchError] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [equipamiento, setEquipamiento] = useState(false);
+  const [userRut, setUserRut] = useState('');
+  const [jugadores, setJugadores] = useState([{ nombre: '', apellido: '', rut: '', edad: '' }]);
+  const [submissionLoading, setSubmissionLoading] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState('');
+  const [submissionError, setSubmissionError] = useState('');
+
+
+  // ---> AÑADIDO: Se agrega 'mostrarCrearReserva' para que el menú se oculte correctamente.
+  const mostrandoSeccion = mostrarFormularioCancha || mostrarHistorial || mostrarFormularioNotificacion || mostrarGestionDisponibilidad || mostrarReportePagos || mostrarCrearReserva;
+  
+  // ---> AÑADIDO: Toda la lógica para crear la reserva
+  useEffect(() => {
+    if (mostrarCrearReserva && selectedDate && token) {
+      setCourtFetchLoading(true);
+      setCourtFetchError('');
+      setSelectedCourt(null);
+      setAvailableCourts([]);
+
+      // ---> CAMBIO 1: Construimos la query string igual que en tu otro componente.
+      const horaInicio = '08:00';
+      const horaTermino = '20:00';
+      const queryString = new URLSearchParams({
+        date: selectedDate,
+        horaInicio: horaInicio,
+        horaTermino: horaTermino,
+      }).toString();
+
+      // ---> CAMBIO 2: Usamos el endpoint y la query string correctos.
+      fetch(`/api/disponibilidad?${queryString}`, {
+          // Se mantiene el header de autorización porque es una llamada del admin.
+          headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => {
+          if (!res.ok) throw new Error('No se pudieron cargar las canchas disponibles.');
+          return res.json();
+      })
+      .then(data => {
+          // Mantenemos la lógica que extrae el array de 'disponibles'.
+          const courtsArray = data.disponibles || [];
+          setAvailableCourts(courtsArray);
+          
+          if (courtsArray.length === 0) {
+              setCourtFetchError('No hay canchas disponibles para la fecha seleccionada.');
+          }
+      })
+      .catch(err => setCourtFetchError(err.message))
+      .finally(() => setCourtFetchLoading(false));
+    }
+  }, [selectedDate, mostrarCrearReserva, token]);
+
+  const handleAddJugador = () => setJugadores([...jugadores, { nombre: '', apellido: '', rut: '', edad: '' }]);
+  const handleRemoveJugador = (index) => setJugadores(jugadores.filter((_, i) => i !== index));
+  const handleJugadorChange = (e, index) => {
+      const { name, value } = e.target;
+      const list = [...jugadores];
+      list[index][name] = value;
+      setJugadores(list);
+  };
+
+  const handleReservationSubmit = async (e) => {
+      e.preventDefault();
+      setSubmissionLoading(true);
+      setSubmissionMessage('');
+      setSubmissionError('');
+      if (!startTime || !endTime || !userRut || !selectedCourt) {
+          setSubmissionError('Por favor, completa el horario y el RUT del usuario.');
+          setSubmissionLoading(false);
+          return;
+      }
+      try {
+          const res = await fetch('/api/admin/reservas', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                  canchaId: selectedCourt.id,
+                  fecha: selectedDate,
+                  horaInicio: startTime,
+                  horaTermino: endTime,
+                  requiereEquipamiento: equipamiento,
+                  userRut: userRut,
+                  jugadores: jugadores,
+              }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message);
+          setSubmissionMessage(data.message);
+          setTimeout(() => {
+              handleCloseReservationFlow();
+          }, 2000);
+      } catch (err) {
+          setSubmissionError(err.message || 'Error al procesar la reserva.');
+      } finally {
+          setSubmissionLoading(false);
+      }
+  };
+
+  const handleCloseReservationFlow = () => {
+      setMostrarCrearReserva(false);
+      setSelectedDate('');
+      setAvailableCourts([]);
+      setSelectedCourt(null);
+      setCourtFetchError('');
+      setStartTime('');
+      setEndTime('');
+      setEquipamiento(false);
+      setUserRut('');
+      setJugadores([{ nombre: '', apellido: '', rut: '', edad: '' }]);
+      setSubmissionMessage('');
+      setSubmissionError('');
+  };
 
   const handleRegisterCancha = async (e) => {
     e.preventDefault();
@@ -145,6 +266,41 @@ function AdminDashboardPage() {
     }
   };
 
+  // --- NUEVA FUNCIÓN: Confirmar una reserva como Admin ---
+  const handleAdminConfirm = async (reservaId) => {
+    if (!window.confirm(`¿Estás seguro de que quieres confirmar la reserva ID: ${reservaId}?`)) return;
+    try {
+      const res = await fetch(`/api/admin/reservas/${reservaId}/confirmar`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      alert('Reserva confirmada exitosamente.');
+      fetchReservationHistory(); // Recargar el historial para ver el cambio
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  // --- NUEVA FUNCIÓN: Cancelar una reserva como Admin ---
+  const handleAdminCancel = async (reservaId) => {
+    if (!window.confirm(`¿Estás seguro de que quieres cancelar la reserva ID: ${reservaId}? Se reembolsará el saldo al usuario.`)) return;
+    try {
+      const res = await fetch(`/api/admin/reservas/${reservaId}/cancelar`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      alert('Reserva cancelada exitosamente.');
+      fetchReservationHistory(); // Recargar el historial
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString.replace(/-/g, '/'));
@@ -185,6 +341,12 @@ function AdminDashboardPage() {
           <section className="admin-availability-section">
             <button onClick={() => setMostrarGestionDisponibilidad(true)} className="btn btn-primary" style={{ marginBottom: '1rem' }}>
               Bloquear Disponibilidad de Canchas
+            </button>
+          </section>
+
+          <section className="admin-create-reservation-section">
+            <button onClick={() => setMostrarCrearReserva(true)} className="btn btn-primary" style={{ marginBottom: '1rem' }}>
+                Crear Reserva para Usuario
             </button>
           </section>
 
@@ -258,13 +420,19 @@ function AdminDashboardPage() {
                         <td>${reserva.cancha ? Number(reserva.cancha.costo).toLocaleString('es-CL') : 'N/A'}</td>
                         <td>${Number(reserva.costoEquipamiento).toLocaleString('es-CL')}</td>
                         <td>
-                          {/* --- BOTÓN CONDICIONAL --- */}
+                          {reserva.estadoReserva === 'Pendiente' && (
+                            <button onClick={() => handleAdminConfirm(reserva.id)} className="btn-confirm">Confirmar</button>
+                          )}
+                          
+                          {['Pendiente', 'Confirmada'].includes(reserva.estadoReserva) && (
+                            <button onClick={() => handleAdminCancel(reserva.id)} className="btn-cancel">Cancelar</button>
+                          )}
                           {reserva.estadoReserva === 'CanceladaPorAdmin' && (
                             <button 
                               className="btn-desbloquear"
                               onClick={() => handleDesbloquear(reserva.id)}
                             >
-                              Desbloquear
+                              Desbloquear Horario
                             </button>
                           )}
                         </td>
@@ -306,14 +474,79 @@ function AdminDashboardPage() {
       )}
 
       {mostrarReportePagos && (
-        <section className="admin-dashboard-main-content"> {/* Reutilizamos esta clase para un look consistente */}
-          <ReportePagosPage /> {/* Renderizamos el componente que ya habíamos creado */}
+        <section className="admin-dashboard-main-content">
+          <ReportePagosPage /> 
           <button 
             className="btn btn-secondary" 
             style={{ marginTop: '20px' }} 
             onClick={() => setMostrarReportePagos(false)}
           >
             Volver al Panel Principal
+          </button>
+        </section>
+      )}
+      {mostrarCrearReserva && (
+        <section className="admin-section">
+          {!selectedCourt ? (
+            <div>
+              <h2>Crear Reserva para Usuario</h2>
+              <p>Disponibilidad de reservas de 8:00hrs a 20:00hrs.</p>
+              <div style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ddd', borderRadius: '8px' }}>
+                <label htmlFor="reserva-fecha-admin" style={{ marginRight: '10px', fontWeight: 'bold' }}>Paso 1: Seleccione la fecha</label>
+                <input type="date" id="reserva-fecha-admin" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+              </div>
+              {selectedDate && (
+                <div>
+                  <h4 style={{ marginTop: '20px' }}>Paso 2: Seleccione la cancha disponible</h4>
+                  {courtFetchLoading && <p>Buscando canchas...</p>}
+                  {courtFetchError && <p className="error-message">{courtFetchError}</p>}
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    {availableCourts.map(court => (
+                      <button key={court.id} className="btn btn-primary" onClick={() => setSelectedCourt(court)}>
+                        {court.nombre} (${Number(court.costo).toLocaleString('es-CL')})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <h3>Reserva para {selectedCourt.nombre} el {selectedDate}</h3>
+              <form onSubmit={handleReservationSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div><label>Hora de inicio:</label><input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required /></div>
+                  <div><label>Hora de término:</label><input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required /></div>
+                  <div><label>RUT de quien reserva:</label><input type="text" placeholder="Ej: 11222333-4" value={userRut} onChange={(e) => setUserRut(e.target.value)} required /></div>
+                  <label><input type="checkbox" checked={equipamiento} onChange={(e) => setEquipamiento(e.target.checked)} /> ¿Necesita equipamiento?</label>
+                </div>
+                <hr />
+                <h4>Jugadores (Máximo {selectedCourt.maxJugadores || 4})</h4>
+                {jugadores.map((jugador, index) => (
+                  <div key={index} style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span>{index + 1}.</span>
+                    <input type="text" name="nombre" placeholder="Nombre" value={jugador.nombre} onChange={e => handleJugadorChange(e, index)} required />
+                    <input type="text" name="apellido" placeholder="Apellido" value={jugador.apellido} onChange={e => handleJugadorChange(e, index)} required />
+                    <input type="text" name="rut" placeholder="RUT" value={jugador.rut} onChange={e => handleJugadorChange(e, index)} required />
+                    <input type="number" name="edad" placeholder="Edad" value={jugador.edad} onChange={e => handleJugadorChange(e, index)} required />
+                    {jugadores.length > 1 && <button type="button" onClick={() => handleRemoveJugador(index)}>X</button>}
+                  </div>
+                ))}
+                {jugadores.length < (selectedCourt.maxJugadores || 4) && (
+                  <button type="button" onClick={handleAddJugador} style={{ alignSelf: 'flex-start' }}>Añadir Jugador</button>
+                )}
+                <hr />
+                <div style={{ marginTop: '10px' }}>
+                  <button type="submit" disabled={submissionLoading}>{submissionLoading ? 'Creando Reserva...' : 'Crear Reserva'}</button>
+                  <button type="button" onClick={() => setSelectedCourt(null)} style={{ marginLeft: '10px' }}>Volver a elegir cancha</button>
+                </div>
+                {submissionMessage && <p style={{ color: 'green' }}>{submissionMessage}</p>}
+                {submissionError && <p style={{ color: 'red' }}>{submissionError}</p>}
+              </form>
+            </div>
+          )}
+          <button onClick={handleCloseReservationFlow} className="btn btn-secondary" style={{ marginTop: '20px' }}>
+            Cancelar y Volver al Panel
           </button>
         </section>
       )}

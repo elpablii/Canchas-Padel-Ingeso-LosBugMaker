@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-function ReservationForm({ court, date, onClose }) {
+function ReservationForm({ court, date, onClose, isAdmin = false}) {
   // Estado para los campos de la reserva
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');

@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { Reserva, User, Cancha, sequelize } = require('../models'); 
+const { Reserva, User, Cancha, Jugador, sequelize } = require('../models'); 
 const { notificarATodos } = require('../services/notificacionService');
+const moment = require('moment-timezone');
 // --- CORRECCIÓN: Se usan solo los middlewares necesarios y estándar ---
 const { verificarToken, verificarAdmin } = require('../middleware/auth');
+const { enviarEmailConfirmacion } = require('../services/emailService');
 
 // Se elimina el router.use() global para aplicar la seguridad explícitamente en cada ruta.
 
@@ -147,6 +149,110 @@ router.delete('/reservas/:id', [verificarToken, verificarAdmin], async (req, res
 
     } catch (error) {
         console.error('Error al eliminar bloqueo:', error);
+        res.status(500).json({ message: 'Error interno del servidor.' });
+    }
+});
+
+router.post('/reservas', [verificarToken, verificarAdmin], async (req, res) => {
+    const { canchaId, fecha, horaInicio, horaTermino, requiereEquipamiento, userRut, jugadores } = req.body;
+
+    if (!userRut) {
+        return res.status(400).json({ message: 'Se debe especificar el RUT del usuario para la reserva.' });
+    }
+
+    const transaction = await sequelize.transaction();
+    try {
+        const cancha = await Cancha.findByPk(canchaId, { transaction });
+        const user = await User.findByPk(userRut, { transaction });
+
+        if (!cancha || !user) {
+            await transaction.rollback();
+            return res.status(404).json({ message: 'El usuario o la cancha especificada no existen.' });
+        }
+
+        const duracionMinutos = moment.duration(moment(horaTermino, 'HH:mm').diff(moment(horaInicio, 'HH:mm'))).asMinutes();
+        const costoTotal = ((duracionMinutos / 60) * 15000) + (requiereEquipamiento ? 5000 : 0);
+
+        if (user.saldo < costoTotal) {
+            await transaction.rollback();
+            return res.status(402).json({ message: `El usuario no tiene saldo suficiente.` });
+        }
+
+        await user.decrement('saldo', { by: costoTotal, transaction });
+
+        const nuevaReserva = await Reserva.create({
+            canchaId, userRut, fecha, horaInicio, horaTermino, requiereEquipamiento,
+            costoEquipamiento: requiereEquipamiento ? 5000 : 0,
+            costoTotalReserva: costoTotal,
+            estadoReserva: 'Confirmada' 
+        }, { transaction });
+
+        if (jugadores && jugadores.length > 0) {
+            const jugadoresParaCrear = jugadores.map(jugador => ({ ...jugador, reservaId: nuevaReserva.id }));
+            await Jugador.bulkCreate(jugadoresParaCrear, { transaction });
+        }
+
+        await transaction.commit();
+        res.status(201).json({ message: 'Reserva creada exitosamente por el administrador.', reserva: nuevaReserva });
+
+    } catch (error) {
+        if (transaction) await transaction.rollback();
+        console.error('Error del admin al crear reserva:', error);
+        res.status(500).json({ message: 'Error interno al crear la reserva.' });
+    }
+});
+
+router.put('/reservas/:id/cancelar', [verificarToken, verificarAdmin], async (req, res) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { id } = req.params;
+        const reserva = await Reserva.findByPk(id, { transaction });
+
+        if (!reserva) {
+            await transaction.rollback();
+            return res.status(404).json({ message: 'Reserva no encontrada.' });
+        }
+        if (reserva.estadoReserva.startsWith('Cancelada')) {
+            await transaction.rollback();
+            return res.status(400).json({ message: 'Esta reserva ya está cancelada.' });
+        }
+        
+
+        reserva.estadoReserva = 'CanceladaPorAdmin';
+        await reserva.save({ transaction });
+        
+        const usuario = await User.findByPk(reserva.userRut, { transaction });
+        if (usuario && reserva.costoTotalReserva > 0) {
+            await usuario.increment('saldo', { by: reserva.costoTotalReserva, transaction });
+        }
+        
+        await transaction.commit();
+        res.json({ message: 'Reserva cancelada exitosamente por el admin.', reserva });
+
+    } catch (error) {
+        if (transaction) await transaction.rollback();
+        console.error('Error del admin al cancelar reserva:', error);
+        res.status(500).json({ message: 'Error interno del servidor.' });
+    }
+});
+
+router.put('/reservas/:id/confirmar', [verificarToken, verificarAdmin], async (req, res) => {
+    try {
+        const { id } = req.params;
+        const reserva = await Reserva.findByPk(id);
+
+        if (!reserva) {
+            return res.status(404).json({ message: 'Reserva no encontrada.' });
+        }
+        if (reserva.estadoReserva !== 'Pendiente') {
+            return res.status(400).json({ message: 'Solo se pueden confirmar reservas pendientes.' });
+        }
+
+        reserva.estadoReserva = 'Confirmada';
+        await reserva.save();
+        res.json({ message: 'Reserva confirmada por el admin.', reserva });
+    } catch (error) {
+        console.error('Error del admin al confirmar reserva:', error);
         res.status(500).json({ message: 'Error interno del servidor.' });
     }
 });
