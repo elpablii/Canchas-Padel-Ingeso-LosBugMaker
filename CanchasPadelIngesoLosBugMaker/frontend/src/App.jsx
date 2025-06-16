@@ -10,6 +10,7 @@ import AvailabilityPage from './pages/AvailabilityPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import ReservationHistory from './components/ReservationHistory';
 import { useAuth } from './context/AuthContext';
+import ReportePagosPage from './pages/ReportePagosPage';
 
 // --- NUEVO: Importamos la página de la billetera que crearemos ---
 import BilleteraPage from './pages/BilleteraPage'; 
@@ -64,7 +65,7 @@ function Navbar() {
             <div className="navbar-user-info">
                 <span>Hola, {userGreeting} {user.rol === 'admin' && '(Admin)'}</span>
                 
-                {/* --- AQUÍ ESTÁ LA MAGIA: Mostramos el saldo --- */}
+                {/* --- Mostramos el saldo --- */}
                 {/* Lo hacemos un enlace a la página de la billetera */}
                 <RouterLink to="/billetera" className="navbar-saldo">
                     Saldo: {formatCurrency(user.saldo)}
@@ -73,6 +74,7 @@ function Navbar() {
 
             {user.rol === 'admin' ? (
               <RouterLink to="/admin/dashboard">Panel Admin</RouterLink>
+              
             ) : (
               <RouterLink to="/user-home">Mi Página</RouterLink>
             )}
@@ -111,6 +113,10 @@ function App() {
           {/* --- Ruta Protegida para Admin --- */}
           <Route path="/admin/dashboard" element={<AdminProtectedRoute><AdminDashboardPage /></AdminProtectedRoute>} />
           
+          {/* --- Ruta Reporte de Pagos --- */}
+          <Route path="/admin/reporte-pagos" element={<AdminProtectedRoute><ReportePagosPage /></AdminProtectedRoute>} />
+          
+
           {/* --- Ruta para Página no encontrada --- */}
           <Route path="*" element={
             <div style={{ textAlign: 'center', marginTop: '50px' }}>

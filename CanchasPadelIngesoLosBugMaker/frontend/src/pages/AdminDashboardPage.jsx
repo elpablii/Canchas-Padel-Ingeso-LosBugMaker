@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import AdminDisponibilidad from '../components/AdminDisponibilidad.jsx';
+import ReportePagosPage from './ReportePagosPage.jsx'; 
 import './AdminDashboardPage.css';
 
 function AdminDashboardPage() {
@@ -11,6 +12,7 @@ function AdminDashboardPage() {
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [mostrarFormularioNotificacion, setMostrarFormularioNotificacion] = useState(false);
   const [mostrarGestionDisponibilidad, setMostrarGestionDisponibilidad] = useState(false); // <-- NUEVO ESTADO
+  const [mostrarReportePagos, setMostrarReportePagos] = useState(false);
 
   // Estados para los formularios y datos
   const [nombreCancha, setNombreCancha] = useState('');
@@ -30,7 +32,7 @@ function AdminDashboardPage() {
   const [notiLoading, setNotiLoading] = useState(false);
 
   // Variable para saber si se está mostrando alguna sección y así ocultar el menú principal
-  const mostrandoSeccion = mostrarFormularioCancha || mostrarHistorial || mostrarFormularioNotificacion || mostrarGestionDisponibilidad;
+  const mostrandoSeccion = mostrarFormularioCancha || mostrarHistorial || mostrarFormularioNotificacion || mostrarGestionDisponibilidad || mostrarReportePagos;
 
   const handleRegisterCancha = async (e) => {
     e.preventDefault();
@@ -174,6 +176,11 @@ function AdminDashboardPage() {
             <button onClick={fetchReservationHistory} className="admin-nav-link" disabled={loading}>
               {loading ? 'Cargando...' : 'Ver Historial de Reservas'}
             </button>
+
+            <button onClick={() => setMostrarReportePagos(true)} className="admin-nav-link">
+              Ver Reporte de Pagos/Ingresos
+            </button>
+          
           </nav>
           <section className="admin-availability-section">
             <button onClick={() => setMostrarGestionDisponibilidad(true)} className="btn btn-primary" style={{ marginBottom: '1rem' }}>
@@ -295,6 +302,19 @@ function AdminDashboardPage() {
                 {notiMsg && <div className="success-message" style={{ marginTop: '1rem' }}>{notiMsg}</div>}
                 {notiError && <div className="error-message" style={{ marginTop: '1rem' }}>{notiError}</div>}
             </form>
+        </section>
+      )}
+
+      {mostrarReportePagos && (
+        <section className="admin-dashboard-main-content"> {/* Reutilizamos esta clase para un look consistente */}
+          <ReportePagosPage /> {/* Renderizamos el componente que ya habíamos creado */}
+          <button 
+            className="btn btn-secondary" 
+            style={{ marginTop: '20px' }} 
+            onClick={() => setMostrarReportePagos(false)}
+          >
+            Volver al Panel Principal
+          </button>
         </section>
       )}
     </div>
