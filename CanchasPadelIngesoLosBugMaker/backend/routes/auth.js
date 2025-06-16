@@ -159,7 +159,8 @@ router.post('/login', async (req, res) => {
                 rut: user.rut,
                 nombre: user.nombre,
                 email: user.email,
-                rol: user.rol
+                rol: user.rol,
+                saldo: user.saldo
             }
         });
         console.log(`[${requestTimestamp}] RESPONSE_SENT: 200 - Login exitoso.`);

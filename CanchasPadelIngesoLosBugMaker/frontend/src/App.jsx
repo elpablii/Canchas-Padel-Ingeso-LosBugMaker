@@ -12,8 +12,8 @@ import ReservationHistory from './components/ReservationHistory';
 import { useAuth } from './context/AuthContext';
 import ReportePagosPage from './pages/ReportePagosPage';
 
-// --- NUEVO: Importamos la página de la billetera que crearemos ---
 import BilleteraPage from './pages/BilleteraPage'; 
+import UserProfilePage from './pages/UserProfilePage';
 
 import './App.css';
 
@@ -41,7 +41,7 @@ function AdminProtectedRoute({ children }) {
   return children;
 }
 
-// --- Navbar (CON EL CAMBIO PARA MOSTRAR EL SALDO) ---
+// --- Navbar ---
 function Navbar() {
   const { isAuthenticated, logout, user } = useAuth();
   const userGreeting = user ? (user.nombre || user.email || user.rut) : '';
@@ -68,9 +68,11 @@ function Navbar() {
                 {/* --- Mostramos el saldo --- */}
                 {/* Lo hacemos un enlace a la página de la billetera */}
                 <RouterLink to="/billetera" className="navbar-saldo">
-                    Saldo: {formatCurrency(user.saldo)}
+                    Saldo
                 </RouterLink>
             </div>
+
+            <RouterLink to="/perfil">Mi Perfil</RouterLink>
 
             {user.rol === 'admin' ? (
               <RouterLink to="/admin/dashboard">Panel Admin</RouterLink>
@@ -107,8 +109,9 @@ function App() {
           <Route path="/reservar-cancha" element={<ProtectedRoute><ReservationPage /></ProtectedRoute>} />
           <Route path="/disponibilidad-canchas" element={<ProtectedRoute><AvailabilityPage /></ProtectedRoute>} />
           
-          {/* --- NUEVA RUTA PROTEGIDA PARA LA BILLETERA --- */}
+          {/* --- RUTA PROTEGIDA --- */}
           <Route path="/billetera" element={<ProtectedRoute><BilleteraPage /></ProtectedRoute>} />
+          <Route path="/perfil" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
           
           {/* --- Ruta Protegida para Admin --- */}
           <Route path="/admin/dashboard" element={<AdminProtectedRoute><AdminDashboardPage /></AdminProtectedRoute>} />

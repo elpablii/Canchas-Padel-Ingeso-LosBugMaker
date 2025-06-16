@@ -1,0 +1,79 @@
+/* frontend/src/pages/userProfilePage.css */
+.profile-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  min-height: 70vh;
+}
+
+.profile-card {
+  width: 100%;
+  max-width: 600px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden; /* Para que el header no se salga de los bordes redondeados */
+}
+
+.profile-header {
+  background: #343a40;
+  color: white;
+  padding: 25px;
+  text-align: center;
+  position: relative;
+}
+
+.profile-header h1 {
+  margin: 0;
+  font-size: 2em;
+}
+
+.role-badge {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 0.8em;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.role-badge.role-admin {
+  background-color: #dc3545; /* Rojo para admin */
+}
+
+.role-badge.role-socio {
+  background-color: #007bff; /* Azul para socio */
+}
+
+.profile-details {
+  padding: 30px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 1.1em;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  color: #555;
+  font-weight: 600;
+}
+
+.detail-value {
+  color: #333;
+}
+
+.detail-value.saldo {
+  font-weight: bold;
+  color: #28a745; 
+}

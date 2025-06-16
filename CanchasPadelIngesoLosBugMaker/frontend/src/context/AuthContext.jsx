@@ -52,8 +52,6 @@ export const AuthProvider = ({ children }) => {
     navigate('/login'); // Redirigir al login después del logout
   };
 
-  // Podrías añadir una función para verificar la expiración del token aquí si es necesario
-
   return (
     <AuthContext.Provider value={{ token, user, isAuthenticated, login, logout }}>
       {children}
