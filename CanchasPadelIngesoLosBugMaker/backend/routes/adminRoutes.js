@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Reserva, User, Cancha, Jugador, sequelize } = require('../models'); 
+const { Reserva, User, Cancha, Jugador, Equipamiento, sequelize } = require('../models'); 
 const { notificarATodos } = require('../services/notificacionService');
 const moment = require('moment-timezone');
 // --- CORRECCIÓN: Se usan solo los middlewares necesarios y estándar ---
@@ -254,6 +254,102 @@ router.put('/reservas/:id/confirmar', [verificarToken, verificarAdmin], async (r
     } catch (error) {
         console.error('Error del admin al confirmar reserva:', error);
         res.status(500).json({ message: 'Error interno del servidor.' });
+    }
+});
+
+// GESTIÓN DE INVENTARIO DE EQUIPAMIENTO 
+
+/**
+ * @route   GET /api/admin/equipamiento
+ * @desc    Obtener todo el inventario de equipamiento
+ * @access  Private (Admin)
+ */
+router.get('/equipamiento', [verificarToken, verificarAdmin], async (req, res) => {
+    try {
+        const inventario = await Equipamiento.findAll({ order: [['tipo', 'ASC'], ['nombre', 'ASC']] });
+        res.status(200).json(inventario);
+    } catch (error) {
+        console.error('Error al obtener el inventario de equipamiento:', error);
+        res.status(500).json({ message: 'Error interno del servidor.' });
+    }
+});
+
+/**
+ * @route   POST /api/admin/equipamiento
+ * @desc    Añadir un nuevo artículo al inventario
+ * @access  Private (Admin)
+ */
+router.post('/equipamiento', [verificarToken, verificarAdmin], async (req, res) => {
+    try {
+        const { nombre, tipo, stock, costo } = req.body;
+        if (!nombre || !tipo || stock === undefined || costo === undefined) {
+            return res.status(400).json({ message: 'Nombre, tipo, stock y costo son requeridos.' });
+        }
+        
+        const nombreEstandarizado = nombre.trim().toUpperCase();
+
+        const nuevoArticulo = await Equipamiento.create({ 
+            nombre: nombreEstandarizado, // Se usa el nombre estandarizado
+            tipo, 
+            stock, 
+            costo 
+        });
+        
+        res.status(201).json(nuevoArticulo);
+    } catch (error) {
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(409).json({ message: 'Ya existe un artículo con ese nombre.' });
+        }
+        console.error('Error al añadir equipamiento:', error);
+        res.status(500).json({ message: 'Error interno al crear el artículo.' });
+    }
+});
+/**
+ * @route   PUT /api/admin/equipamiento/:id
+ * @desc    Actualizar un artículo del inventario
+ * @access  Private (Admin)
+ */
+router.put('/equipamiento/:id', [verificarToken, verificarAdmin], async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nombre, tipo, stock, costo } = req.body;
+        
+        const articulo = await Equipamiento.findByPk(id);
+        if (!articulo) {
+            return res.status(404).json({ message: 'Artículo de equipamiento no encontrado.' });
+        }
+
+        articulo.nombre = nombre || articulo.nombre;
+        articulo.tipo = tipo || articulo.tipo;
+        articulo.stock = stock !== undefined ? stock : articulo.stock;
+        articulo.costo = costo !== undefined ? costo : articulo.costo;
+        
+        await articulo.save();
+        res.status(200).json(articulo);
+    } catch (error) {
+        console.error('Error al actualizar equipamiento:', error);
+        res.status(500).json({ message: 'Error interno al actualizar el artículo.' });
+    }
+});
+
+/**
+ * @route   DELETE /api/admin/equipamiento/:id
+ * @desc    Eliminar un artículo del inventario
+ * @access  Private (Admin)
+ */
+router.delete('/equipamiento/:id', [verificarToken, verificarAdmin], async (req, res) => {
+    try {
+        const { id } = req.params;
+        const articulo = await Equipamiento.findByPk(id);
+        if (!articulo) {
+            return res.status(404).json({ message: 'Artículo de equipamiento no encontrado.' });
+        }
+
+        await articulo.destroy();
+        res.status(200).json({ message: 'Artículo eliminado exitosamente.' });
+    } catch (error) {
+        console.error('Error al eliminar equipamiento:', error);
+        res.status(500).json({ message: 'Error interno al eliminar el artículo.' });
     }
 });
 

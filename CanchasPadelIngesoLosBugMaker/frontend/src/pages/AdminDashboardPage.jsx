@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import AdminDisponibilidad from '../components/AdminDisponibilidad.jsx';
 import ReportePagosPage from './ReportePagosPage.jsx'; 
+import AdminInventario from '../components/AdminInventario.jsx'; 
 import './AdminDashboardPage.css';
 
 function AdminDashboardPage() {
@@ -14,6 +15,7 @@ function AdminDashboardPage() {
   const [mostrarGestionDisponibilidad, setMostrarGestionDisponibilidad] = useState(false); // <-- NUEVO ESTADO
   const [mostrarReportePagos, setMostrarReportePagos] = useState(false);
   const [mostrarCrearReserva, setMostrarCrearReserva] = useState(false);
+  const [mostrarGestionInventario, setMostrarGestionInventario] = useState(false);
 
   // Estados para los formularios y datos
   const [nombreCancha, setNombreCancha] = useState('');
@@ -47,11 +49,42 @@ function AdminDashboardPage() {
   const [submissionMessage, setSubmissionMessage] = useState('');
   const [submissionError, setSubmissionError] = useState('');
 
+    // --- NUEVOS ESTADOS PARA MANEJAR EQUIPAMIENTO ---
+  const [quiereEquipamiento, setQuiereEquipamiento] = useState(false);
+  const [inventario, setInventario] = useState([]);
+  const [equiposSeleccionados, setEquiposSeleccionados] = useState([]);
+  const [loadingEquipamiento, setLoadingEquipamiento] = useState(false);
 
-  // ---> AÑADIDO: Se agrega 'mostrarCrearReserva' para que el menú se oculte correctamente.
-  const mostrandoSeccion = mostrarFormularioCancha || mostrarHistorial || mostrarFormularioNotificacion || mostrarGestionDisponibilidad || mostrarReportePagos || mostrarCrearReserva;
+  const mostrandoSeccion = mostrarFormularioCancha || mostrarHistorial || mostrarFormularioNotificacion || mostrarGestionDisponibilidad || mostrarReportePagos || mostrarCrearReserva || mostrarGestionInventario;
   
-  // ---> AÑADIDO: Toda la lógica para crear la reserva
+  // --- NUEVO USEEFFECT PARA CARGAR EQUIPAMIENTO ---
+  useEffect(() => {
+    if (quiereEquipamiento && inventario.length === 0) {
+      setLoadingEquipamiento(true);
+      fetch('/api/equipamiento')
+        .then(res => res.ok ? res.json() : Promise.reject('No se pudo cargar inventario.'))
+        .then(data => setInventario(data || []))
+        .catch(err => setCourtFetchError(err.toString())) // Reutilizamos el estado de error
+        .finally(() => setLoadingEquipamiento(false));
+    }
+  }, [quiereEquipamiento]);
+
+  // --- NUEVAS FUNCIONES PARA MANEJAR EQUIPAMIENTO ---
+  const handleAddEquipoRow = () => setEquiposSeleccionados([...equiposSeleccionados, { id: '', cantidad: 1, tipo: '' }]);
+  const handleRemoveEquipoRow = (index) => setEquiposSeleccionados(equiposSeleccionados.filter((_, i) => i !== index));
+  const handleEquipoSelectionChange = (index, field, value) => {
+    const newList = [...equiposSeleccionados];
+    const currentItem = { ...newList[index] };
+    if (field === 'tipo') {
+        currentItem.tipo = value;
+        currentItem.id = '';
+    } else {
+        currentItem[field] = value;
+    }
+    newList[index] = currentItem;
+    setEquiposSeleccionados(newList);
+  };
+
   useEffect(() => {
     if (mostrarCrearReserva && selectedDate && token) {
       setCourtFetchLoading(true);
@@ -59,7 +92,6 @@ function AdminDashboardPage() {
       setSelectedCourt(null);
       setAvailableCourts([]);
 
-      // ---> CAMBIO 1: Construimos la query string igual que en tu otro componente.
       const horaInicio = '08:00';
       const horaTermino = '20:00';
       const queryString = new URLSearchParams({
@@ -111,6 +143,11 @@ function AdminDashboardPage() {
           return;
       }
       try {
+          // --- LÓGICA ACTUALIZADA PARA ENVIAR EQUIPAMIENTO ---
+          const equipamientosParaEnviar = equiposSeleccionados
+            .filter(item => item.id && parseInt(item.cantidad, 10) > 0)
+            .map(item => ({ id: parseInt(item.id), cantidad: parseInt(item.cantidad) }));
+
           const res = await fetch('/api/admin/reservas', {
               method: 'POST',
               headers: {
@@ -122,17 +159,16 @@ function AdminDashboardPage() {
                   fecha: selectedDate,
                   horaInicio: startTime,
                   horaTermino: endTime,
-                  requiereEquipamiento: equipamiento,
                   userRut: userRut,
                   jugadores: jugadores,
+                  equipamientos: equipamientosParaEnviar,
+                  requiereEquipamiento: quiereEquipamiento && equipamientosParaEnviar.length > 0
               }),
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.message);
           setSubmissionMessage(data.message);
-          setTimeout(() => {
-              handleCloseReservationFlow();
-          }, 2000);
+          setTimeout(() => handleCloseReservationFlow(), 2000);
       } catch (err) {
           setSubmissionError(err.message || 'Error al procesar la reserva.');
       } finally {
@@ -153,6 +189,8 @@ function AdminDashboardPage() {
       setJugadores([{ nombre: '', apellido: '', rut: '', edad: '' }]);
       setSubmissionMessage('');
       setSubmissionError('');
+      setQuiereEquipamiento(false);
+      setEquiposSeleccionados([]);
   };
 
   const handleRegisterCancha = async (e) => {
@@ -350,6 +388,12 @@ function AdminDashboardPage() {
             </button>
           </section>
 
+          <section className="admin-inventory-section">
+            <button onClick={() => setMostrarGestionInventario(true)} className="btn btn-primary" style={{ marginBottom: '1rem' }}>
+              Gestionar Inventario
+            </button>
+          </section>
+
           <section className="admin-notificacion-section">
               <button
                 className="btn btn-secondary"
@@ -514,13 +558,79 @@ function AdminDashboardPage() {
             <div>
               <h3>Reserva para {selectedCourt.nombre} el {selectedDate}</h3>
               <form onSubmit={handleReservationSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <div><label>Hora de inicio:</label><input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required /></div>
-                  <div><label>Hora de término:</label><input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required /></div>
-                  <div><label>RUT de quien reserva:</label><input type="text" placeholder="Ej: 11222333-4" value={userRut} onChange={(e) => setUserRut(e.target.value)} required /></div>
-                  <label><input type="checkbox" checked={equipamiento} onChange={(e) => setEquipamiento(e.target.checked)} /> ¿Necesita equipamiento?</label>
+                
+                {/* SECCIÓN MODIFICADA */}
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap', border: '1px solid #eee', padding: '15px', borderRadius: '8px' }}>
+                  <div>
+                      <label>Hora de inicio:</label>
+                      <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
+                  </div>
+                  <div>
+                      <label>Hora de término:</label>
+                      <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
+                  </div>
+                  {/* ESTE ES EL NUEVO CAMPO PARA EL RUT */}
+                  <div>
+                      <label>RUT de quien reserva:</label>
+                      <input 
+                          type="text" 
+                          placeholder="Ej: 11222333-4" 
+                          value={userRut} 
+                          onChange={(e) => setUserRut(e.target.value)} 
+                          required 
+                      />
+                  </div>
+                    <label style={{ marginLeft: 'auto', userSelect: 'none', cursor: 'pointer' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={quiereEquipamiento} 
+                            onChange={(e) => setQuiereEquipamiento(e.target.checked)} 
+                        /> ¿Necesita equipamiento?
+                    </label>
                 </div>
+                  {quiereEquipamiento && (
+                    <div style={{ border: '1px solid #007bff', borderRadius: '8px', padding: '20px', marginTop: '10px', backgroundColor: '#f8f9fa' }}>
+                      <h4 style={{ textAlign: 'center', marginTop: 0, marginBottom: '15px' }}>Seleccionar Equipamiento</h4>
+                      
+                      {loadingEquipamiento && <p>Cargando inventario...</p>}
+                      {!loadingEquipamiento && inventario.length === 0 && <p>No hay equipamiento disponible en inventario.</p>}
+                      
+                      {!loadingEquipamiento && inventario.length > 0 && equiposSeleccionados.map((equipo, index) => (
+                        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                          
+                          <select value={equipo.tipo} onChange={(e) => handleEquipoSelectionChange(index, 'tipo', e.target.value)} style={{ flex: 2 }}>
+                            <option value="">-- Tipo de Equipo --</option>
+                            {[...new Set(inventario.map(item => item.tipo))].map(tipo => (
+                              <option key={tipo} value={tipo}>{tipo}</option>
+                            ))}
+                          </select>
+
+                          <select value={equipo.id} onChange={(e) => handleEquipoSelectionChange(index, 'id', e.target.value)} disabled={!equipo.tipo} style={{ flex: 3 }}>
+                            <option value="">-- Modelo (Stock) --</option>
+                            {inventario.filter(item => item.tipo === equipo.tipo).map(item => (
+                              <option key={item.id} value={item.id}>
+                                {item.nombre} (Stock: {item.stock})
+                              </option>
+                            ))}
+                          </select>
+                          
+                          <input type="number" min="1" value={equipo.cantidad} onChange={(e) => handleEquipoSelectionChange(index, 'cantidad', e.target.value)} placeholder="Cant." style={{ width: '70px' }} />
+                          
+                          <button type="button" onClick={() => handleRemoveEquipoRow(index)} style={{ border: 'none', background: 'transparent', color: 'red', cursor: 'pointer', fontSize: '1.5rem', padding: 0, lineHeight: 1 }}>
+                            &times;
+                          </button>
+                        </div>
+                      ))}
+
+                      {!loadingEquipamiento && inventario.length > 0 && (
+                        <button type="button" onClick={handleAddEquipoRow} style={{ display: 'block', margin: '15px auto 0' }} className="btn btn-secondary">
+                          Añadir Equipamiento
+                        </button>
+                      )}
+                    </div>
+                  )}
                 <hr />
+
                 <h4>Jugadores (Máximo {selectedCourt.maxJugadores || 4})</h4>
                 {jugadores.map((jugador, index) => (
                   <div key={index} style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -535,11 +645,14 @@ function AdminDashboardPage() {
                 {jugadores.length < (selectedCourt.maxJugadores || 4) && (
                   <button type="button" onClick={handleAddJugador} style={{ alignSelf: 'flex-start' }}>Añadir Jugador</button>
                 )}
+                
                 <hr />
+
                 <div style={{ marginTop: '10px' }}>
                   <button type="submit" disabled={submissionLoading}>{submissionLoading ? 'Creando Reserva...' : 'Crear Reserva'}</button>
                   <button type="button" onClick={() => setSelectedCourt(null)} style={{ marginLeft: '10px' }}>Volver a elegir cancha</button>
                 </div>
+                
                 {submissionMessage && <p style={{ color: 'green' }}>{submissionMessage}</p>}
                 {submissionError && <p style={{ color: 'red' }}>{submissionError}</p>}
               </form>
@@ -547,6 +660,19 @@ function AdminDashboardPage() {
           )}
           <button onClick={handleCloseReservationFlow} className="btn btn-secondary" style={{ marginTop: '20px' }}>
             Cancelar y Volver al Panel
+          </button>
+        </section>
+      )}
+
+      {mostrarGestionInventario && (
+        <section className="admin-section">
+          <AdminInventario /> {/* <-- Renderiza el nuevo componente aquí */}
+          <button 
+            className="btn btn-secondary" 
+            style={{ marginTop: '20px' }} 
+            onClick={() => setMostrarGestionInventario(false)}
+          >
+            Volver al Panel Principal
           </button>
         </section>
       )}

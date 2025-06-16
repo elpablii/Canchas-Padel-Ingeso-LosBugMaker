@@ -5,7 +5,7 @@ const { Op } = require('sequelize');
 
 // --- CORRECCIÓN CLAVE: Importar todos los modelos desde el index ---
 // Esto asegura que los modelos tengan sus asociaciones cargadas.
-const { Reserva, User, Cancha, Jugador, sequelize } = require('../models');
+const { Reserva, User, Cancha, Jugador, Equipamiento, sequelize } = require('../models');
 
 const { enviarEmailConfirmacion } = require('../services/emailService');
 const TIMEZONE = 'America/Santiago';
@@ -56,59 +56,71 @@ router.get('/historial/:userRut', async (req, res) => { // <-- 1. Parámetro cor
 
 // PUT /api/reservas/:id/cancelar
 router.put('/:id/cancelar', async (req, res) => {
-  const transaction = await sequelize.transaction(); // Iniciar transacción para seguridad
+    const transaction = await sequelize.transaction(); // Iniciar transacción para seguridad
 
-  try {
-    const { id } = req.params;
-    const reserva = await Reserva.findByPk(id, { transaction });
+    try {
+        const { id } = req.params;
+        
+        // --- 1. OBTENER LA RESERVA Y SU EQUIPAMIENTO ASOCIADO ---
+        // Usamos 'include' para traer la información del equipamiento arrendado en una sola consulta.
+        const reserva = await Reserva.findByPk(id, {
+            include: [{
+                model: Equipamiento,
+                as: 'equipamientosRentados', // El alias que definimos en la asociación
+                through: { attributes: ['cantidad'] } // Nos aseguramos de traer la cantidad de la tabla intermedia
+            }],
+            transaction
+        });
 
-    if (!reserva) {
-      await transaction.rollback();
-      return res.status(404).json({ message: 'Reserva no encontrada.' });
+        if (!reserva) {
+            await transaction.rollback();
+            return res.status(404).json({ message: 'Reserva no encontrada.' });
+        }
+
+        // --- 2. VALIDACIONES DE ESTADO Y TIEMPO (Sin cambios) ---
+        if (reserva.estadoReserva.startsWith('Cancelada')) {
+            await transaction.rollback();
+            return res.status(400).json({ message: 'La reserva ya se encuentra cancelada.' });
+        }
+        
+        const ahora = moment().tz(TIMEZONE);
+        const inicioReserva = moment.tz(`${reserva.fecha} ${reserva.horaInicio}`, 'YYYY-MM-DD HH:mm:ss', TIMEZONE);
+        if (inicioReserva.diff(ahora, 'days') < 7) {
+            await transaction.rollback();
+            return res.status(403).json({ message: 'No se puede cancelar una reserva con menos de 1 semana de anticipación.' });
+        }
+
+        // --- 3. DEVOLUCIÓN DE STOCK DEL EQUIPAMIENTO ---
+        if (reserva.equipamientosRentados && reserva.equipamientosRentados.length > 0) {
+            console.log('Devolviendo stock de equipamiento al inventario...');
+            for (const equipo of reserva.equipamientosRentados) {
+                // 'equipo.ReservaEquipamiento.cantidad' nos da la cantidad que se arrendó
+                const cantidadADevolver = equipo.ReservaEquipamiento.cantidad;
+                await equipo.increment('stock', { by: cantidadADevolver, transaction });
+            }
+        }
+
+        // --- 4. LÓGICA DE REEMBOLSO DE SALDO AL USUARIO ---
+        const usuario = await User.findByPk(reserva.userRut, { transaction });
+        if (usuario && reserva.costoTotalReserva > 0) {
+            // CORRECCIÓN: Usamos el costoTotalReserva guardado para un reembolso preciso.
+            await usuario.increment('saldo', { by: reserva.costoTotalReserva, transaction });
+        }
+        
+        // --- 5. ACTUALIZAR ESTADO DE LA RESERVA ---
+        reserva.estadoReserva = 'CanceladaPorUsuario';
+        await reserva.save({ transaction });
+
+        // --- 6. FINALIZAR LA TRANSACCIÓN ---
+        await transaction.commit();
+
+        return res.json({ message: 'Reserva cancelada, stock devuelto y saldo reembolsado exitosamente.', reserva });
+
+    } catch (error) {
+        if (transaction) await transaction.rollback();
+        console.error('Error al cancelar reserva:', error);
+        return res.status(500).json({ message: 'Error interno del servidor.' });
     }
-
-    // 1. VERIFICAR SI YA ESTÁ CANCELADA
-    if (reserva.estadoReserva.startsWith('Cancelada')) {
-      await transaction.rollback();
-      return res.status(400).json({ message: 'La reserva ya se encuentra cancelada.' });
-    }
-    
-    // 2. 1 semana de anticipacion
-    const ahora = moment().tz(TIMEZONE);
-    const inicioReserva = moment.tz(`${reserva.fecha} ${reserva.horaInicio}`, 'YYYY-MM-DD HH:mm:ss', TIMEZONE);
-    const diasDeDiferencia = inicioReserva.diff(ahora, 'days');
-
-    if (diasDeDiferencia < 7) {
-        await transaction.rollback();
-        return res.status(403).json({ message: 'No se puede cancelar una reserva con menos de 1 semana de anticipación.' });
-    }
-
-    // 3. ACTUALIZAR ESTADO DE LA RESERVA
-    reserva.estadoReserva = 'CanceladaPorUsuario';
-    await reserva.save({ transaction });
-    
-    // 4. LÓGICA DE REEMBOLSO
-    const usuario = await User.findByPk(reserva.userRut, { transaction });
-    if (usuario) {
-      // Calculamos el costo total que tuvo la reserva para reembolsarlo
-      const duracionEnHoras = (new Date(`1970-01-01T${reserva.horaTermino}Z`) - new Date(`1970-01-01T${reserva.horaInicio}Z`)) / (1000 * 60 * 60);
-      const costoCancha = duracionEnHoras * 15000;
-      const costoTotal = costoCancha + reserva.costoEquipamiento;
-
-      await usuario.increment('saldo', { by: costoTotal, transaction });
-    }
-
-    // Si todo sale bien, se confirman los cambios
-    await transaction.commit();
-
-    return res.json({ message: 'Reserva cancelada y reembolso procesado exitosamente.', reserva });
-
-  } catch (error) {
-    // Si algo falla, se deshace todo
-    if (transaction) await transaction.rollback();
-    console.error('Error al cancelar reserva:', error);
-    return res.status(500).json({ message: 'Error interno del servidor.' });
-  }
 });
 
 // EN: backend/routes/reservas.js
@@ -153,7 +165,8 @@ router.post('/', async (req, res) => {
     let transaction;
 
     try {
-        const { canchaId, fecha, horaInicio, horaTermino, requiereEquipamiento, userRut, jugadores } = req.body;
+        const { canchaId, fecha, horaInicio, horaTermino, userRut, jugadores, equipamientos, requiereEquipamiento } = req.body;
+
 
         // --- 1. Validaciones (como las tenías, ¡perfectas!) ---
         if (!canchaId || !fecha || !horaInicio || !horaTermino || requiereEquipamiento === undefined || !userRut || !jugadores) {
@@ -214,7 +227,36 @@ router.post('/', async (req, res) => {
         // Una transacción asegura que AMBAS operaciones (cobrar y reservar) se completen, o NINGUNA.
         transaction = await sequelize.transaction();
 
-        // --- 3. Obtener datos y calcular costos DENTRO de la transacción ---
+        // --- 2. VALIDACIÓN DE STOCK DE EQUIPAMIENTO (CORREGIDA) ---
+        let costoEquipamientoTotal = 0;
+        if (equipamientos && equipamientos.length > 0) {
+            
+            // Paso A: Agrupar las cantidades solicitadas por cada ID de artículo.
+            // Esto previene que se pueda pedir el mismo artículo varias veces superando el stock.
+            const cantidadesAgrupadas = equipamientos.reduce((acc, item) => {
+                acc[item.id] = (acc[item.id] || 0) + item.cantidad;
+                return acc;
+            }, {}); // Resultado ej: { '1': 2, '3': 1 }
+
+            const idsEquipamiento = Object.keys(cantidadesAgrupadas);
+            const articulosEnStock = await Equipamiento.findAll({
+                where: { id: { [Op.in]: idsEquipamiento } },
+                transaction
+            });
+
+            // Paso B: Validar el stock para cada artículo con la cantidad total solicitada.
+            for (const articulo of articulosEnStock) {
+                const cantidadSolicitada = cantidadesAgrupadas[articulo.id];
+                if (articulo.stock < cantidadSolicitada) {
+                    await transaction.rollback();
+                    return res.status(409).json({ message: `Stock insuficiente para ${articulo.nombre}. Solicitado: ${cantidadSolicitada}, Disponible: ${articulo.stock}.` });
+                }
+                // Sumamos al costo total
+                costoEquipamientoTotal += articulo.costo * cantidadSolicitada;
+            }
+        }
+        
+        // --- OBTENER DATOS Y VALIDACIONES RESTANTES ---
         const cancha = await Cancha.findByPk(canchaId, { transaction });
         const user = await User.findByPk(userRut, { transaction });
 
@@ -283,17 +325,11 @@ router.post('/', async (req, res) => {
             return res.status(409).json({ message: 'Este horario ya no está disponible en esta cancha.' });
         }
 
+        const costoCancha = (duracionMinutos / 60) * 15000;
+        const costoTotal = costoCancha + costoEquipamientoTotal;
 
         // Cálculo de costo de la cancha
-        const inicio = new Date(`1970-01-01T${horaInicio}Z`);
-        const fin = new Date(`1970-01-01T${horaTermino}Z`);
-        const duracionEnHoras = (fin - inicio) / (1000 * 60 * 60);
-        const costoCancha = duracionEnHoras * 15000; // ¡Usando el precio que especificaste!
-        
-        const COSTO_EQUIPAMIENTO = 1000; // Costo fijo por equipamiento
-        const costoEquipamientoFinal = requiereEquipamiento ? COSTO_EQUIPAMIENTO : 0;
-        
-        const costoTotal = costoCancha + costoEquipamientoFinal;
+
 
         // --- 4. VERIFICAR SALDO DEL USUARIO ---
         if (user.saldo < costoTotal) {
@@ -325,26 +361,31 @@ router.post('/', async (req, res) => {
         // Descontar saldo
         await user.decrement('saldo', { by: costoTotal, transaction });
 
-        // Crear la reserva
+        // --- 5. EJECUTAR OPERACIONES DE ESCRITURA ---
+        await user.decrement('saldo', { by: costoTotal, transaction });
+
         const nuevaReserva = await Reserva.create({
-            canchaId,
-            userRut,
-            fecha,
-            horaInicio,
-            horaTermino,
-            requiereEquipamiento,
-            costoEquipamiento: costoEquipamientoFinal,
-            // El estado por defecto será 'Pendiente' o 'Confirmada' según tu modelo
+            canchaId, userRut, fecha, horaInicio, horaTermino,
+            requiereEquipamiento: costoEquipamientoTotal > 0, // Es true si se arrienda algo
+            costoEquipamiento: costoEquipamientoTotal,
+            costoTotalReserva: costoTotal,
+            estadoReserva: 'Pendiente'
         }, { transaction });
 
-        // --- 6. GUARDAR LOS JUGADORES ASOCIADOS A LA RESERVA ---
-        // Añadimos el ID de la reserva a cada jugador
-        const jugadoresParaCrear = jugadores.map(jugador => ({
-            ...jugador,
-            reservaId: nuevaReserva.id // Asociamos cada jugador con la reserva recién creada
-        }));
-
+        const jugadoresParaCrear = jugadores.map(j => ({ ...j, reservaId: nuevaReserva.id }));
         await Jugador.bulkCreate(jugadoresParaCrear, { transaction });
+
+        // GUARDAR EQUIPAMIENTO ARRENDADO Y DESCONTAR STOCK
+        if (equipamientos && equipamientos.length > 0) {
+            for (const item of equipamientos) {
+                const equipamiento = await Equipamiento.findByPk(item.id, { transaction });
+                await nuevaReserva.addEquipamientosRentado(equipamiento, {
+                    through: { cantidad: item.cantidad },
+                    transaction
+                });
+                await equipamiento.decrement('stock', { by: item.cantidad, transaction });
+            }
+        }
 
         // --- 7. Confirmar la transacción ---
         await transaction.commit();
@@ -356,7 +397,6 @@ router.post('/', async (req, res) => {
         } catch (emailError) {
           console.error('El correo de confirmación no se pudo enviar, pero la reserva fue exitosa.', emailError);
         }
-        // --- FIN DEL BLOQUE DE CORREO ---
 
         console.log(`[${timestamp}] PAGO Y RESERVA EXITOSOS`);
         return res.status(201).json({

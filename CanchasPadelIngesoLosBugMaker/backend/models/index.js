@@ -32,12 +32,9 @@ Object.keys(db).forEach(modelName => {
 });
 
 // --- Definición explícita de Asociaciones (Si no usas el método .associate en cada modelo) ---
-const User = db.User;
-const Cancha = db.Cancha;
-const Reserva = db.Reserva;
-const Jugador = db.Jugador;
+const { User, Cancha, Reserva, Jugador, Equipamiento, ReservaEquipamiento } = db;
 
-if (User && Reserva && Cancha) {
+if (User && Reserva && Cancha && Jugador && Equipamiento && ReservaEquipamiento) {
   // User <-> Reserva
   User.hasMany(Reserva, {
     foreignKey: { name: 'userRut', type: DataTypes.STRING, allowNull: false },
@@ -74,6 +71,19 @@ if (User && Reserva && Cancha) {
         type: DataTypes.INTEGER,
         allowNull: false
     }
+  });
+
+  Reserva.belongsToMany(Equipamiento, {
+  through: ReservaEquipamiento, 
+  foreignKey: 'reservaId',     
+  as: 'equipamientosRentados'     
+  });
+
+
+  Equipamiento.belongsToMany(Reserva, {
+  through: ReservaEquipamiento, 
+  foreignKey: 'equipamientoId', 
+  as: 'reservasAsociadas'     
   });
 
   console.log("Asociaciones User-Reserva y Cancha-Reserva definidas con alias únicos.");

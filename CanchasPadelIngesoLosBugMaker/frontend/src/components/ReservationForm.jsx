@@ -1,32 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { useAuth } from '../context/AuthContext.jsx';
 
-function ReservationForm({ court, date, onClose, isAdmin = false}) {
-  // Estado para los campos de la reserva
+function ReservationForm({ court, date, onClose }) {
+  const { user, token } = useAuth();
+
+  // --- Estados del Formulario ---
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [equipamiento, setEquipamiento] = useState(false);
-  
-  // --- ESTADO PARA EL RUT (VUELVE A SER MANUAL) ---
-  const [rutReserva, setRutReserva] = useState('');
-
-  // --- ESTADO PARA LOS JUGADORES ---
   const [jugadores, setJugadores] = useState([{ nombre: '', apellido: '', rut: '', edad: '' }]);
   
+  // --- Estados para Equipamiento ---
+  const [quiereEquipamiento, setQuiereEquipamiento] = useState(false);
+  const [inventario, setInventario] = useState([]);
+  const [equiposSeleccionados, setEquiposSeleccionados] = useState([]);
+  const [loadingEquipamiento, setLoadingEquipamiento] = useState(false);
+
   // Mensajes de estado
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  // --- FUNCIONES PARA MANEJAR LA LISTA DE JUGADORES ---
-  const handleAddJugador = () => {
-    setJugadores([...jugadores, { nombre: '', apellido: '', rut: '', edad: '' }]);
+  // Carga el inventario cuando el usuario marca la casilla
+  useEffect(() => {
+    if (quiereEquipamiento && inventario.length === 0) {
+      setLoadingEquipamiento(true);
+      fetch('/api/equipamiento') 
+        .then(res => res.ok ? res.json() : Promise.reject('No se pudo cargar el inventario.'))
+        .then(data => setInventario(data || []))
+        .catch(err => setError(err.toString()))
+        .finally(() => setLoadingEquipamiento(false));
+    }
+  }, [quiereEquipamiento]);
+
+  // --- LÓGICA RESTAURADA PARA EQUIPAMIENTO DINÁMICO ---
+
+  const handleAddEquipoRow = () => {
+    // Añade una fila vacía para que el usuario elija otro artículo
+    setEquiposSeleccionados([...equiposSeleccionados, { id: '', cantidad: 1, tipo: '' }]);
   };
 
-  const handleRemoveJugador = (index) => {
-    const list = [...jugadores];
-    list.splice(index, 1);
-    setJugadores(list);
+  const handleRemoveEquipoRow = (index) => {
+    setEquiposSeleccionados(equiposSeleccionados.filter((_, i) => i !== index));
+  };
+  
+  const handleEquipoSelectionChange = (index, field, value) => {
+    const newList = [...equiposSeleccionados];
+    const currentItem = { ...newList[index] };
+    
+    if (field === 'tipo') {
+        currentItem.tipo = value;
+        currentItem.id = ''; // Resetea el artículo seleccionado al cambiar de tipo
+    } else {
+        currentItem[field] = value;
+    }
+    newList[index] = currentItem;
+    setEquiposSeleccionados(newList);
   };
 
+  // --- Lógica para Jugadores (sin cambios) ---
+  const handleAddJugador = () => setJugadores([...jugadores, { nombre: '', apellido: '', rut: '', edad: '' }]);
+  const handleRemoveJugador = (index) => setJugadores(jugadores.filter((_, i) => i !== index));
   const handleJugadorChange = (e, index) => {
     const { name, value } = e.target;
     const list = [...jugadores];
@@ -34,105 +66,121 @@ function ReservationForm({ court, date, onClose, isAdmin = false}) {
     setJugadores(list);
   };
 
-  // --- LÓGICA DE ENVÍO DEL FORMULARIO ---
+  // --- Lógica de Envío del Formulario ---
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
     setError('');
-
-    if (!startTime || !endTime || !rutReserva) {
-      setError('Por favor, completa la hora, y el RUT de quien reserva.');
+    if (!startTime || !endTime || !user?.rut) {
+      setError('Por favor, completa el horario. Debes estar logueado para reservar.');
       return;
     }
 
     try {
+      // Formatea el array de equipamiento para que coincida con lo que espera el backend
+      const equipamientosParaEnviar = equiposSeleccionados
+        .filter(item => item.id && parseInt(item.cantidad, 10) > 0)
+        .map(item => ({ id: parseInt(item.id), cantidad: parseInt(item.cantidad) }));
+
       const res = await fetch('/api/reservas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
         body: JSON.stringify({
           canchaId: court.id,
           fecha: date,
           horaInicio: startTime,
           horaTermino: endTime,
-          requiereEquipamiento: equipamiento,
-          userRut: rutReserva, // Se usa el RUT del estado del formulario
+          userRut: user.rut,
           jugadores: jugadores,
+          equipamientos: equipamientosParaEnviar,
+          requiereEquipamiento: quiereEquipamiento && equipamientosParaEnviar.length > 0
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Error del servidor.');
-      }
-      
+      if (!res.ok) throw new Error(data.message);
       setMessage(data.message);
 
     } catch (err) {
       setError(err.message || 'Error al procesar la reserva.');
     }
   };
+  
+  // Obtiene una lista única de los tipos de equipamiento disponibles
+  const tiposDeEquipamiento = [...new Set(inventario.map(item => item.tipo))];
 
-  // --- RENDERIZADO DEL FORMULARIO ---
   return (
     <div style={{ marginTop: '20px', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
       <h3>Reserva para {court.nombre} el {date}</h3>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         
-        {/* Sección de Horarios y RUT del responsable */}
+        {/* Sección de Horarios y Checkbox de Equipamiento */}
         <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-end' }}>
-          <div>
-            <label>Hora de inicio:</label>
-            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
-          </div>
-          <div>
-            <label>Hora de término:</label>
-            <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
-          </div>
-          <div>
-            <label>RUT de quien reserva:</label>
-            <input type="text" placeholder="Ej: 11222333-4" value={rutReserva} onChange={(e) => setRutReserva(e.target.value)} required />
-          </div>
-          <label>
-            <input type="checkbox" checked={equipamiento} onChange={(e) => setEquipamiento(e.target.checked)} />
-            ¿Necesita equipamiento?
-          </label>
+          <div><label>Hora de inicio:</label><input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required /></div>
+          <div><label>Hora de término:</label><input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required /></div>
+          <label><input type="checkbox" checked={quiereEquipamiento} onChange={(e) => setQuiereEquipamiento(e.target.checked)} />¿Necesita equipamiento?</label>
         </div>
+
+        {/* --- SECCIÓN DE EQUIPAMIENTO DINÁMICO RESTAURADA --- */}
+        {quiereEquipamiento && (
+          <section className="equipamiento-section" style={{ border: '1px solid #007bff', padding: '15px', borderRadius: '5px' }}>
+            <h4>Seleccionar Equipamiento</h4>
+            {loadingEquipamiento && <p>Cargando inventario...</p>}
+            
+            {equiposSeleccionados.map((equipo, index) => (
+              <div key={index} style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                <select value={equipo.tipo || ''} onChange={(e) => handleEquipoSelectionChange(index, 'tipo', e.target.value)}>
+                    <option value="" disabled>-- Seleccione Tipo --</option>
+                    {tiposDeEquipamiento.map(tipo => <option key={tipo} value={tipo}>{tipo}</option>)}
+                </select>
+
+                <select value={equipo.id || ''} onChange={(e) => handleEquipoSelectionChange(index, 'id', e.target.value)} disabled={!equipo.tipo}>
+                    <option value="" disabled>-- Seleccione Artículo --</option>
+                    {inventario.filter(item => item.tipo === equipo.tipo).map(item => (
+                        <option key={item.id} value={item.id}>{item.nombre} (Stock: {item.stock})</option>
+                    ))}
+                </select>
+
+                <input 
+                    type="number" min="1" 
+                    max={inventario.find(i => i.id == equipo.id)?.stock || 1} 
+                    value={equipo.cantidad} 
+                    onChange={(e) => handleEquipoSelectionChange(index, 'cantidad', e.target.value)}
+                    style={{ width: '80px' }}
+                />
+                <button type="button" onClick={() => handleRemoveEquipoRow(index)}>X</button>
+              </div>
+            ))}
+
+            <button type="button" onClick={handleAddEquipoRow} style={{ alignSelf: 'flex-start' }}>Añadir Equipamiento</button>
+          </section>
+        )}
 
         <hr />
 
-        {/* --- FORMULARIO DINÁMICO PARA JUGADORES --- */}
+        {/* Formulario de Jugadores */}
         <h4>Jugadores (Máximo {court.maxJugadores || 4})</h4>
         {jugadores.map((jugador, index) => (
           <div key={index} style={{ display: 'flex', gap: '10px', alignItems: 'center', border: '1px solid #eee', padding: '10px', borderRadius: '5px' }}>
             <span>{index + 1}.</span>
             <input type="text" name="nombre" placeholder="Nombre" value={jugador.nombre} onChange={e => handleJugadorChange(e, index)} required style={{flex: 1}} />
             <input type="text" name="apellido" placeholder="Apellido" value={jugador.apellido} onChange={e => handleJugadorChange(e, index)} required style={{flex: 1}} />
-            <input type="text" name="rut" placeholder="RUT (sin puntos, con guión)" value={jugador.rut} onChange={e => handleJugadorChange(e, index)} required style={{flex: 1}} />
+            <input type="text" name="rut" placeholder="RUT" value={jugador.rut} onChange={e => handleJugadorChange(e, index)} required style={{flex: 1}} />
             <input type="number" name="edad" placeholder="Edad" value={jugador.edad} onChange={e => handleJugadorChange(e, index)} required style={{width: '80px'}} />
-            
-            {jugadores.length > 1 && (
-              <button type="button" onClick={() => handleRemoveJugador(index)} style={{backgroundColor: '#f44336', color: 'white', border: 'none', padding: '5px 10px'}}>X</button>
-            )}
+            {jugadores.length > 1 && (<button type="button" onClick={() => handleRemoveJugador(index)}>X</button>)}
           </div>
         ))}
-        
-        {jugadores.length < (court.maxJugadores || 4) && (
-            <button type="button" onClick={handleAddJugador} style={{ alignSelf: 'flex-start' }}>Añadir Jugador</button>
-        )}
+        {jugadores.length < (court.maxJugadores || 4) && (<button type="button" onClick={handleAddJugador}>Añadir Jugador</button>)}
 
         <hr />
-
-        <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <button type="submit">Confirmar Reserva</button>
-            <button type="button" onClick={onClose} style={{ marginLeft: '10px' }}>Cerrar</button>
-          </div>
-          <div>
-            {message && <p style={{ color: 'green', margin: 0 }}>{message}</p>}
-            {error && <p style={{ color: 'red', margin: 0 }}>{error}</p>}
-          </div>
+        
+        <div style={{ marginTop: '10px' }}>
+          <button type="submit">Confirmar Reserva</button>
+          <button type="button" onClick={onClose} style={{ marginLeft: '10px' }}>Cerrar</button>
         </div>
 
+        {message && <p style={{ color: 'green' }}>{message}</p>}
+        {error && <p style={{ color: 'red' }}>{error}</p>}
       </form>
     </div>
   );
