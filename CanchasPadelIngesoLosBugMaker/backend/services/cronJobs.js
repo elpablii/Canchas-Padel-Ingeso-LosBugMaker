@@ -102,4 +102,4 @@ cron.schedule('0 9 * * *', enviarRecordatoriosDeReservas, {
 console.log('Tareas programadas (Cron Jobs) iniciadas.');
 
 
-enviarRecordatoriosDeReservas(); 
+//enviarRecordatoriosDeReservas(); 

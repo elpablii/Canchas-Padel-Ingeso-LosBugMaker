@@ -1,64 +1,77 @@
 const express = require('express');
 const router = express.Router();
-const Reserva = require('../models/Reserva');
-const Cancha = require('../models/Cancha');
-
+const moment = require('moment-timezone');
 const { Op } = require('sequelize');
+const { Reserva, Cancha } = require('../models');
 
-// GET /api/availability?date=YYYY-MM-DD
+const TIMEZONE = 'America/Santiago';
+
+// GET /api/disponibilidad?date=YYYY-MM-DD&horaInicio=HH:MM&horaTermino=HH:MM
 router.get('/', async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, horaInicio, horaTermino } = req.query;
 
-    if (!date) {
-      return res.status(400).json({ message: 'El parámetro "date" es requerido.' });
+    // --- 1. VALIDACIONES DE ENTRADA ---
+    if (!date || !horaInicio || !horaTermino) {
+      return res.status(400).json({ message: 'Los parámetros "date", "horaInicio" y "horaTermino" son requeridos.' });
     }
-    const {horaInicio, horaTermino } = req.query;
 
-    const reservas = await Reserva.findAll({
-      where: {
-        fecha: date,
-        [Op.or]: [
-          {
+    const fechaMoment = moment.tz(date, 'YYYY-MM-DD', TIMEZONE);
+    const horaInicioMoment = moment.tz(`${date} ${horaInicio}`, 'YYYY-MM-DD HH:mm', TIMEZONE);
+    const horaTerminoMoment = moment.tz(`${date} ${horaTermino}`, 'YYYY-MM-DD HH:mm', TIMEZONE);
+
+    // --- 2. VALIDACIONES DE REGLAS DE NEGOCIO ---
+
+    // Regla: Solo de Lunes a Viernes
+    const diaSemana = fechaMoment.day(); // 1 = Lunes, 5 = Viernes
+    if (diaSemana < 1 || diaSemana > 5) {
+        return res.status(400).json({ 
+            disponibles: [], // Devolvemos un array vacío para que el frontend no muestre nada
+            message: 'Las canchas solo operan de Lunes a Viernes.' 
+        });
+    }
+
+    // Regla: Solo entre 08:00 y 20:00
+    const horaLimiteInicio = fechaMoment.clone().hour(8).minute(0);
+    const horaLimiteFin = fechaMoment.clone().hour(20).minute(0);
+
+    if (horaInicioMoment.isBefore(horaLimiteInicio) || horaTerminoMoment.isAfter(horaLimiteFin)) {
+        return res.status(400).json({
+            disponibles: [],
+            message: 'El horario de consulta debe estar entre las 08:00 y las 20:00 hrs.'
+        });
+    }
+
+    // --- 3. LÓGICA DE BÚSQUEDA ---
+
+    // Paso A: Buscar todas las reservas que se solapan con el horario solicitado en esa fecha
+    const reservasEnConflicto = await Reserva.findAll({
+        where: {
+            fecha: date,
+            estadoReserva: { [Op.notIn]: ['CanceladaPorUsuario', 'CanceladaPorAdmin', 'NoAsistio'] },
             horaInicio: {
-              [Op.between]: [horaInicio, horaTermino]
-            }
-          },
-          {
+                [Op.lt]: horaTermino
+            },
             horaTermino: {
-              [Op.between]: [horaInicio, horaTermino]
+                [Op.gt]: horaInicio
             }
-          },
-          {
-            [Op.and]: [
-              { horaInicio: { [Op.lte]: horaInicio } },
-              { horaTermino: { [Op.gte]: horaTermino } }
-            ]
-          }
-        ]
-      }
-    });
-    // Paso 1: Obtener todas las canchas
-    const todasLasCanchas = await Cancha.findAll();
-
-    // Paso 2: Buscar todas las reservas de ese día
-    const reservasDelDia = await Reserva.findAll({
-      where: {
-        fecha: date
-      }
+        }
     });
 
-    // Paso 3: Obtener IDs de canchas ya reservadas ese día
-    const canchasReservadasIds = reservasDelDia.map(r => r.canchaId);
+    // Paso B: Obtener los IDs de las canchas que ya están ocupadas en ese horario
+    const canchasOcupadasIds = reservasEnConflicto.map(r => r.canchaId);
 
-    // Paso 4: Filtrar las disponibles
-    const canchasDisponibles = todasLasCanchas.filter(
-      cancha => !canchasReservadasIds.includes(cancha.id)
-    );
-
-    return res.json({
-      disponibles: canchasDisponibles
+    // Paso C: Buscar todas las canchas EXCLUYENDO las que están ocupadas
+    const canchasDisponibles = await Cancha.findAll({
+        where: {
+            id: {
+                [Op.notIn]: canchasOcupadasIds // Excluimos los IDs de las canchas ocupadas
+            }
+        },
+        order: [['id', 'ASC']] // Opcional: ordenar por ID
     });
+
+    return res.status(200).json({ disponibles: canchasDisponibles });
 
   } catch (err) {
     console.error('Error al consultar disponibilidad:', err);
