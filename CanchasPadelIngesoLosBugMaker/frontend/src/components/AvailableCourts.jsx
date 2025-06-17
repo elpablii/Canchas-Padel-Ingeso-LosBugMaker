@@ -51,7 +51,7 @@ function AvailableCourts({ date }) {
   return (
     <div>
       <h3 style={{ borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
-        Canchas totalmente disponibles para el día: {date}
+        Canchas disponibles para el día: {date}
       </h3>
 
       <div style={{ marginTop: '20px' }}>

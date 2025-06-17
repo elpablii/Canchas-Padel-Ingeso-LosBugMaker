@@ -44,30 +44,11 @@ router.get('/', async (req, res) => {
 
     // --- 3. LÓGICA DE BÚSQUEDA ---
 
-    // Paso A: Buscar todas las reservas que se solapan con el horario solicitado en esa fecha
-    const reservasEnConflicto = await Reserva.findAll({
-        where: {
-            fecha: date,
-            estadoReserva: { [Op.notIn]: ['CanceladaPorUsuario', 'CanceladaPorAdmin', 'NoAsistio'] },
-            horaInicio: {
-                [Op.lt]: horaTermino
-            },
-            horaTermino: {
-                [Op.gt]: horaInicio
-            }
-        }
-    });
-
-    // Paso B: Obtener los IDs de las canchas que ya están ocupadas en ese horario
-    const canchasOcupadasIds = reservasEnConflicto.map(r => r.canchaId);
+    
 
     // Paso C: Buscar todas las canchas EXCLUYENDO las que están ocupadas
     const canchasDisponibles = await Cancha.findAll({
-        where: {
-            id: {
-                [Op.notIn]: canchasOcupadasIds // Excluimos los IDs de las canchas ocupadas
-            }
-        },
+  
         order: [['id', 'ASC']] // Opcional: ordenar por ID
     });
 

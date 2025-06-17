@@ -27,19 +27,20 @@ router.get('/historial', async (req, res) => {
             order: [['createdAt', 'DESC']] // Ordenamos por fecha de pago (creación de la reserva)
         });
 
-        // Calculamos el costo total para cada "pago"
+        // Obtenemos los datos para el reporte de pagos.
         const historialDePagos = pagos.map(pago => {
-            const duracionEnHoras = (new Date(`1970-01-01T${pago.horaTermino}Z`) - new Date(`1970-01-01T${pago.horaInicio}Z`)) / (1000 * 60 * 60);
-            const costoCancha = duracionEnHoras * 15000; // O podrías usar pago.cancha.costo si lo incluyes
-            const costoTotal = costoCancha + parseFloat(pago.costoEquipamiento);
+        // No es necesario recalcular nada.
+        // Usamos el valor 'costoTotalReserva' que fue guardado en la base de datos
+        // al momento de crear la reserva. Esto es mucho más preciso y seguro.
+        const montoPagado = parseFloat(pago.costoTotalReserva) || 0;
 
-            return {
-                id: pago.id,
-                fechaPago: pago.createdAt,
-                monto: costoTotal,
-                usuario: pago.usuario,
-                cancha: pago.cancha
-            };
+        return {
+            id: pago.id,
+            fechaPago: pago.createdAt, // La fecha de pago es la fecha de creación de la reserva
+            monto: montoPagado,
+            usuario: pago.usuario, // Asumiendo que incluyes el usuario en la consulta
+            cancha: pago.cancha   // Asumiendo que incluyes la cancha en la consulta
+        };
         });
 
         res.status(200).json(historialDePagos);

@@ -15,6 +15,8 @@ function ReservationForm({ court, date, onClose }) {
   const [equiposSeleccionados, setEquiposSeleccionados] = useState([]);
   const [loadingEquipamiento, setLoadingEquipamiento] = useState(false);
 
+  // ESTADO PARA EL CÁLCULO DEL COSTO 
+  const [costoTotal, setCostoTotal] = useState(0);
   // Mensajes de estado
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -30,6 +32,43 @@ function ReservationForm({ court, date, onClose }) {
         .finally(() => setLoadingEquipamiento(false));
     }
   }, [quiereEquipamiento]);
+
+  // --- NUEVO USEEFFECT PARA CALCULAR EL COSTO EN TIEMPO REAL ---
+  useEffect(() => {
+    const calcularCosto = () => {
+      // 1. Calcular costo de la cancha
+      let costoDeCancha = 0;
+      if (startTime && endTime && court?.costo) {
+        // Usamos objetos Date para calcular la diferencia de tiempo de forma segura
+        const inicio = new Date(`1970-01-01T${startTime}`);
+        const fin = new Date(`1970-01-01T${endTime}`);
+        const duracionMs = fin.getTime() - inicio.getTime();
+
+        if (duracionMs > 0) {
+          const duracionHoras = duracionMs / (1000 * 60 * 60);
+          costoDeCancha = duracionHoras * parseFloat(court.costo);
+        }
+      }
+
+      // 2. Calcular costo del equipamiento
+      let costoDeEquipamiento = 0;
+      if (equiposSeleccionados.length > 0 && inventario.length > 0) {
+        costoDeEquipamiento = equiposSeleccionados.reduce((total, seleccionado) => {
+          const itemInventario = inventario.find(i => i.id == seleccionado.id);
+          const cantidad = parseInt(seleccionado.cantidad, 10) || 0;
+          if (itemInventario && cantidad > 0) {
+            return total + (parseFloat(itemInventario.costo) * cantidad);
+          }
+          return total;
+        }, 0);
+      }
+      
+      // 3. Actualizar el estado con la suma total
+      setCostoTotal(costoDeCancha + costoDeEquipamiento);
+    };
+
+    calcularCosto();
+  }, [startTime, endTime, equiposSeleccionados, court, inventario]); // Se recalcula si cambia cualquiera de estos datos
 
   // --- LÓGICA RESTAURADA PARA EQUIPAMIENTO DINÁMICO ---
 
@@ -174,6 +213,11 @@ function ReservationForm({ court, date, onClose }) {
 
         <hr />
         
+
+        <div className="costo-total-display" style={{ padding: '10px', backgroundColor: '#e9f7ef', borderRadius: '5px', textAlign: 'center' }}>
+          <h4>Costo Total Estimado: {costoTotal.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}</h4>
+        </div>
+
         <div style={{ marginTop: '10px' }}>
           <button type="submit">Confirmar Reserva</button>
           <button type="button" onClick={onClose} style={{ marginLeft: '10px' }}>Cerrar</button>
