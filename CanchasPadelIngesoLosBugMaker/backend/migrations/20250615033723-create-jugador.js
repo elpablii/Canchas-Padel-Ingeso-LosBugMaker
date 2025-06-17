@@ -25,7 +25,7 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: false
       },
-      // --- Clave Foránea que conecta con la tabla 'reservas' ---
+      // --- Clave Foránea que conecta con la tabla 'reservas' 
       reservaId: {
         type: Sequelize.INTEGER,
         allowNull: false,
