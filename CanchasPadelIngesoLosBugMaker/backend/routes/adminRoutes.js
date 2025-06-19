@@ -5,6 +5,7 @@ const { notificarATodos } = require('../services/notificacionService');
 const moment = require('moment-timezone');
 // --- CORRECCIÓN: Se usan solo los middlewares necesarios y estándar ---
 const { verificarToken, verificarAdmin } = require('../middleware/auth');
+const { Op } = require('sequelize');
 const { enviarEmailConfirmacion } = require('../services/emailService');
 
 // Se elimina el router.use() global para aplicar la seguridad explícitamente en cada ruta.
@@ -98,22 +99,42 @@ router.post('/bloquear', [verificarToken, verificarAdmin], async (req, res) => {
 
     const transaction = await sequelize.transaction();
     try {
-        const canchasABloquear = [];
+        let canchasIds = [];
         if (canchaId === 'todas') {
-            const todasLasCanchas = await Cancha.findAll({ transaction });
-            canchasABloquear.push(...todasLasCanchas.map(c => c.id));
+            const todasLasCanchas = await Cancha.findAll({ attributes: ['id'], transaction });
+            canchasIds = todasLasCanchas.map(c => c.id);
         } else {
-            canchasABloquear.push(parseInt(canchaId, 10));
+            canchasIds.push(parseInt(canchaId, 10));
         }
 
-        for (const id of canchasABloquear) {
+        // --- VALIDACIÓN CLAVE: Se comprueba si hay conflictos ANTES de bloquear ---
+        const conflictoExistente = await Reserva.findOne({
+            where: {
+                fecha,
+                canchaId: { [Op.in]: canchasIds },
+                estadoReserva: { [Op.notIn]: ['CanceladaPorUsuario', 'CanceladaPorAdmin'] },
+                // Lógica de solapamiento de horarios
+                horaInicio: { [Op.lt]: horaTermino },
+                horaTermino: { [Op.gt]: horaInicio }
+            },
+            transaction
+        });
+
+        // Si se encuentra CUALQUIER reserva, no se puede bloquear.
+        if (conflictoExistente) {
+            await transaction.rollback();
+            return res.status(409).json({ message: 'No se puede bloquear el horario. Ya existe una reserva de usuario en este rango.' });
+        }
+
+        // Si no hay conflictos, se procede a crear los bloqueos
+        for (const id of canchasIds) {
             await Reserva.create({
                 fecha,
                 horaInicio,
                 horaTermino,
                 canchaId: id,
-                userRut: req.user.rut, // Ahora req.user está definido por el middleware
-                estadoReserva: 'CanceladaPorAdmin',
+                userRut: req.user.rut, // Se asigna el RUT del admin que realiza la acción
+                estadoReserva: 'CanceladaPorAdmin', // Estado especial para bloqueos
                 requiereEquipamiento: false,
                 costoEquipamiento: 0,
                 costoTotalReserva: 0
@@ -129,7 +150,6 @@ router.post('/bloquear', [verificarToken, verificarAdmin], async (req, res) => {
         res.status(500).json({ message: 'Error interno al bloquear el horario.' });
     }
 });
-
 // Desbloquear un horario
 router.delete('/reservas/:id', [verificarToken, verificarAdmin], async (req, res) => {
     try {
@@ -193,6 +213,11 @@ router.post('/reservas', [verificarToken, verificarAdmin], async (req, res) => {
         }
 
         await transaction.commit();
+        try {
+            await enviarEmailConfirmacion(user, nuevaReserva, cancha);
+        } catch (emailError) {
+            console.error('El correo de confirmación no se pudo enviar, pero la reserva fue exitosa.', emailError);
+        }
         res.status(201).json({ message: 'Reserva creada exitosamente por el administrador.', reserva: nuevaReserva });
 
     } catch (error) {

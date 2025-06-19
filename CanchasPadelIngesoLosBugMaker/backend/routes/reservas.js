@@ -235,7 +235,7 @@ router.post('/', [verificarToken], async (req, res) => {
         const todasLasReservasDelDia = await Reserva.findAll({
             where: {
                 fecha,
-                estadoReserva: { [Op.notIn]: ['CanceladaPorUsuario', 'CanceladaPorAdmin', 'NoAsistio'] }
+                estadoReserva: { [Op.notIn]: ['CanceladaPorUsuario','CanceladaPorAdmin', 'NoAsistio'] }
             },
             order: [['horaInicio', 'ASC']],
             transaction
@@ -243,6 +243,31 @@ router.post('/', [verificarToken], async (req, res) => {
 
         const reservasPreviasUsuario = todasLasReservasDelDia.filter(r => r.userRut === userRut);
         
+        // Esta consulta busca directamente si el horario está ocupado por una reserva
+        // activa o por un bloqueo del administrador ('CanceladaPorAdmin').
+        const conflictoExistente = await Reserva.findOne({
+            where: {
+                canchaId: canchaId,
+                fecha: fecha,
+                estadoReserva: {
+
+                    [Op.notIn]: ['CanceladaPorUsuario', 'NoAsistio']
+                },
+                horaInicio: { [Op.lt]: horaTermino },
+                horaTermino: { [Op.gt]: horaInicio }
+            },
+            transaction
+        });
+
+        if (conflictoExistente) {
+            await transaction.rollback();
+            if (conflictoExistente.estadoReserva === 'CanceladaPorAdmin') {
+                return res.status(409).json({ message: 'Este horario no está disponible por mantenimiento o un evento especial.' });
+            }
+            return res.status(409).json({ message: 'Este horario ya no está disponible en esta cancha.' });
+        }
+
+
         const minutosYaReservados = reservasPreviasUsuario.reduce((total, res) => total + moment.duration(moment(res.horaTermino, 'HH:mm').diff(moment(res.horaInicio, 'HH:mm'))).asMinutes(), 0);
         if (minutosYaReservados + duracionMinutos > 180) {
             await transaction.rollback();
@@ -267,7 +292,7 @@ router.post('/', [verificarToken], async (req, res) => {
                 }
                 if (huecoEncontrado) {
                     await transaction.rollback();
-                    return res.status(409).json({ message: `No puedes dejar huecos. Tienes un bloque que termina a ${finBloqueActual}. Debes esperar la reserva de ese horario` });
+                    return res.status(409).json({ message: `No es posible dejar ventanas. Tienes un bloque que termina a ${finBloqueActual}. Debes esperar la reserva de ese horario` });
                 }
             }
         }
