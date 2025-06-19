@@ -1,4 +1,3 @@
-// backend/models/Reserva.js
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
@@ -9,7 +8,6 @@ const Reserva = sequelize.define('Reserva', {
     primaryKey: true,
     allowNull: false,
   },
-  
   fecha: {
     type: DataTypes.DATEONLY, 
     allowNull: false,
@@ -47,7 +45,14 @@ const Reserva = sequelize.define('Reserva', {
       isDecimal: true,
       min: 0,
     },
-    comment: 'Costo del equipamiento solicitado. Será 0 si requiereEquipamiento es false.',
+    comment: 'Costo del equipamiento solicitado.',
+  },
+  // --- CAMPO AÑADIDO ---
+  costoTotalReserva: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0.00,
+    comment: 'Costo total de la reserva (cancha + equipamiento) en el momento de la creación.'
   },
   estadoReserva: { 
     type: DataTypes.ENUM(
@@ -62,6 +67,14 @@ const Reserva = sequelize.define('Reserva', {
     defaultValue: 'Pendiente',
     comment: 'Estado actual de la reserva',
   },
+  recordatorio3dEnviado: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  recordatorio1dEnviado: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
 }, {
   tableName: 'reservas',
   timestamps: true,
@@ -69,3 +82,5 @@ const Reserva = sequelize.define('Reserva', {
 });
 
 module.exports = Reserva;
+
+

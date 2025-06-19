@@ -39,7 +39,7 @@ router.get('/historial/:userRut', async (req, res) => { // <-- 1. Parámetro cor
       order: [['fecha', 'DESC'], ['horaInicio', 'DESC']]
     });
 
-    console.log("Historial obtenido:", historial);
+    //console.log("Historial obtenido:", historial);
 
     if (!historial || historial.length === 0) {
       return res.status(404).json({ message: 'No se encontraron reservas para este RUT.' });
@@ -98,18 +98,20 @@ router.put('/:id/cancelar', async (req, res) => {
             }
         }
 
-        // --- 4. LÓGICA DE REEMBOLSO DE SALDO AL USUARIO ---
+        // Reembolso de saldo
         const usuario = await User.findByPk(reserva.userRut, { transaction });
-        if (usuario && reserva.costoTotalReserva > 0) {
-            // CORRECCIÓN: Usamos el costoTotalReserva guardado para un reembolso preciso.
-            await usuario.increment('saldo', { by: reserva.costoTotalReserva, transaction });
+        
+        // CORRECCIÓN CLAVE: Nos aseguramos de que el costo a reembolsar sea un número.
+        const montoAReembolsar = parseFloat(reserva.costoTotalReserva) || 0;
+
+        if (usuario && montoAReembolsar > 0) {
+            await usuario.increment('saldo', { by: montoAReembolsar, transaction });
         }
         
-        // --- 5. ACTUALIZAR ESTADO DE LA RESERVA ---
+        // Actualización y finalización
         reserva.estadoReserva = 'CanceladaPorUsuario';
         await reserva.save({ transaction });
 
-        // --- 6. FINALIZAR LA TRANSACCIÓN ---
         await transaction.commit();
 
         return res.json({ message: 'Reserva cancelada, stock devuelto y saldo reembolsado exitosamente.', reserva });
@@ -175,6 +177,16 @@ router.post('/', [verificarToken], async (req, res) => {
         }
         if (!validarRutChileno(userRut)) {
             return res.status(400).json({ message: 'El RUT ingresado no es válido.' });
+        }
+
+        for (const jugador of jugadores) {
+            if (!validarRutChileno(jugador.rut)) {
+                return res.status(400).json({ message: `El RUT del jugador '${jugador.nombre || 'desconocido'}' (${jugador.rut}) no es válido.` });
+            }
+            // Se añade la validación de edad
+            if (!jugador.edad || parseInt(jugador.edad) < 14 || parseInt(jugador.edad) > 130) {
+                return res.status(400).json({ message: `Todos los jugadores deben tener al menos 14 años o una edad valida. El jugador '${jugador.nombre || 'desconocido'}' no cumple el requisito.` });
+            }
         }
         
         const reservaFechaMoment = moment.tz(fecha, 'YYYY-MM-DD', TIMEZONE).startOf('day');
