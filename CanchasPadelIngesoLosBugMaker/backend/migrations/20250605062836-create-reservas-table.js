@@ -55,7 +55,7 @@ module.exports = {
         defaultValue: 0.00,
       },
       estadoReserva: {
-        type: Sequelize.ENUM('Pendiente', 'Confirmada', 'CanceladaPorUsuario', 'CanceladaPorAdmin', 'Completada', 'NoAsistio'),
+        type: Sequelize.ENUM('Pendiente', 'Confirmada', 'CanceladaPorUsuario', 'CanceladaPorAdmin', 'Completada', 'NoAsistio', 'Disponible'),
         allowNull: false,
         defaultValue: 'Pendiente',
       },

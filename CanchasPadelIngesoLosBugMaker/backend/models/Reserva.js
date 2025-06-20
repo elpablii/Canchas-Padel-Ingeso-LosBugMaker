@@ -61,7 +61,8 @@ const Reserva = sequelize.define('Reserva', {
       'CanceladaPorUsuario', 
       'CanceladaPorAdmin', 
       'Completada', 
-      'NoAsistio'
+      'NoAsistio',
+      'Archivada' 
     ),
     allowNull: false,
     defaultValue: 'Pendiente',

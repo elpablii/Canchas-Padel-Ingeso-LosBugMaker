@@ -251,7 +251,7 @@ router.post('/', [verificarToken], async (req, res) => {
                 fecha: fecha,
                 estadoReserva: {
 
-                    [Op.notIn]: ['CanceladaPorUsuario', 'NoAsistio']
+                    [Op.notIn]: ['CanceladaPorUsuario', 'NoAsistio', 'Archivada']
                 },
                 horaInicio: { [Op.lt]: horaTermino },
                 horaTermino: { [Op.gt]: horaInicio }

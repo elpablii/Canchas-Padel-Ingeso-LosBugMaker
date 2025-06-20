@@ -58,14 +58,31 @@ router.get('/users', [verificarToken, verificarAdmin], async (req, res) => {
  */
 router.post('/canchas', [verificarToken, verificarAdmin], async (req, res) => {
   try {
-    const { nombre, costo } = req.body;
-    if (!nombre || costo === undefined) {
-      return res.status(400).json({ message: 'El nombre y el costo son obligatorios.' });
+    const { nombre, costo, maxJugadores } = req.body;
+
+    if (!nombre || costo === undefined || maxJugadores === undefined) {
+      return res.status(400).json({ message: 'El nombre, el costo y el máximo de jugadores son obligatorios.' });
     }
-    const nuevaCancha = await Cancha.create({ nombre: nombre.trim(), costo: Number(costo) });
-    // Aquí podrías llamar a notificarATodos si lo deseas
+
+    const maxJugadoresNum = Number(maxJugadores);
+    if (isNaN(maxJugadoresNum) || maxJugadoresNum < 1 || maxJugadoresNum >= 100) {
+        return res.status(400).json({ message: 'El máximo de jugadores debe ser un número entre 2 y 99.' });
+    }
+    
+    const nuevaCancha = await Cancha.create({ 
+      nombre: nombre.trim(), 
+      costo: Number(costo),
+      maxJugadores: maxJugadoresNum
+    });
+
+    await notificarATodos("NUEVA_CANCHA", `Se ha añadido una nueva Cancha: ${nombre}. Ya está disponible para reservar`);
     res.status(201).json({ message: 'Cancha registrada exitosamente.', cancha: nuevaCancha });
+
   } catch (error) {
+    if (error.name === 'SequelizeValidationError') {
+      const mensajes = error.errors.map(err => err.message);
+      return res.status(400).json({ message: 'Error de validación', errors: mensajes });
+    }
     if (error.name === 'SequelizeUniqueConstraintError') {
       return res.status(409).json({ message: 'Ya existe una cancha con ese nombre.' });
     }
@@ -164,8 +181,10 @@ router.delete('/reservas/:id', [verificarToken, verificarAdmin], async (req, res
             return res.status(403).json({ message: 'No se puede eliminar una reserva de usuario. Solo bloqueos.' });
         }
 
-        await reserva.destroy();
-        res.status(200).json({ message: 'Bloqueo eliminado exitosamente.' });
+        reserva.estadoReserva = 'Archivada';
+        await reserva.save(); 
+
+        res.status(200).json({ message: 'Horario desbloqueado exitosamente.' });
 
     } catch (error) {
         console.error('Error al eliminar bloqueo:', error);

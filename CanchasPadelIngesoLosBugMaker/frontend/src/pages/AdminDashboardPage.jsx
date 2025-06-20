@@ -20,6 +20,7 @@ function AdminDashboardPage() {
   // Estados para los formularios y datos
   const [nombreCancha, setNombreCancha] = useState('');
   const [costoCancha, setCostoCancha] = useState('');
+  const [maxJugadores, setMaxJugadores] = useState('4');
   const [canchaMsg, setCanchaMsg] = useState('');
   const [canchaError, setCanchaError] = useState('');
   const [canchaLoading, setCanchaLoading] = useState(false);
@@ -199,29 +200,46 @@ function AdminDashboardPage() {
     setCanchaError('');
     setCanchaLoading(true);
     try {
-      const response = await fetch('/api/admin/canchas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ nombre: nombreCancha, costo: costoCancha })
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || 'Error al registrar la cancha.');
-      }
-      setCanchaMsg('Cancha registrada exitosamente.');
-      setNombreCancha('');
-      setCostoCancha('');
-      setTimeout(() => {
-        setMostrarFormularioCancha(false);
-        setCanchaMsg('');
-      }, 1200);
+        const response = await fetch('/api/admin/canchas', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            // --- CAMBIO CLAVE AQUÍ ---
+            // Añadimos maxJugadores al objeto que se envía.
+            // Usamos el nombre de la variable directamente porque coincide con la clave.
+            body: JSON.stringify({ 
+                nombre: nombreCancha, 
+                costo: costoCancha, 
+                maxJugadores 
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            // El backend ahora puede enviar un array de errores
+            const errorMessage = Array.isArray(data.errors) 
+                ? data.errors.join(', ') 
+                : (data.message || 'Error al registrar la cancha.');
+            throw new Error(errorMessage);
+        }
+
+        setCanchaMsg('Cancha registrada exitosamente.');
+        setNombreCancha('');
+        setCostoCancha('');
+        setMaxJugadores('4'); // <-- AÑADIR: Reseteamos el estado nuevo también
+
+        setTimeout(() => {
+            setMostrarFormularioCancha(false);
+            setCanchaMsg('');
+        }, 1200);
+
     } catch (err) {
-      setCanchaError(err.message);
+        setCanchaError(err.message);
     } finally {
-      setCanchaLoading(false);
+        setCanchaLoading(false);
     }
   };
 
@@ -410,23 +428,38 @@ function AdminDashboardPage() {
 
       
       {mostrarFormularioCancha && (
-        <section className="admin-section">
-            <form onSubmit={handleRegisterCancha} className="register-court-form">
-                <div className="form-group">
-                    <label htmlFor="nombreCancha">Nombre de la cancha:</label>
-                    <input id="nombreCancha" type="text" value={nombreCancha} onChange={e => setNombreCancha(e.target.value)} required minLength={2} disabled={canchaLoading} />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="costoCancha">Costo ($):</label>
-                    <input id="costoCancha" type="number" value={costoCancha} onChange={e => setCostoCancha(e.target.value)} required min={0} step="0.01" disabled={canchaLoading} />
-                </div>
-                <button type="submit" className="btn btn-primary" disabled={canchaLoading}>{canchaLoading ? 'Registrando...' : 'Registrar'}</button>
-                <button type="button" className="btn btn-secondary" style={{ marginLeft: '1rem' }} onClick={() => { setMostrarFormularioCancha(false); setCanchaMsg(''); setCanchaError(''); }} disabled={canchaLoading}> Cancelar</button>
-            </form>
-            {canchaMsg && <p className="success-message">{canchaMsg}</p>}
-            {canchaError && <p className="error-message">{canchaError}</p>}
-        </section>
-      )}
+    <section className="admin-section">
+        <form onSubmit={handleRegisterCancha} className="register-court-form">
+            <div className="form-group">
+                <label htmlFor="nombreCancha">Nombre de la cancha:</label>
+                <input id="nombreCancha" type="text" value={nombreCancha} onChange={e => setNombreCancha(e.target.value)} required minLength={2} disabled={canchaLoading} />
+            </div>
+            <div className="form-group">
+                <label htmlFor="costoCancha">Costo ($):</label>
+                <input id="costoCancha" type="number" value={costoCancha} onChange={e => setCostoCancha(e.target.value)} required min={0} step="0.01" disabled={canchaLoading} />
+            </div>
+
+            <div className="form-group">
+                <label htmlFor="maxJugadores">Máximo de Jugadores:</label>
+                <input 
+                    id="maxJugadores" 
+                    type="number" 
+                    value={maxJugadores} 
+                    onChange={e => setMaxJugadores(e.target.value)} 
+                    required 
+                    min="1" 
+                    max="99" 
+                    disabled={canchaLoading} 
+                />
+            </div>
+            
+            <button type="submit" className="btn btn-primary" disabled={canchaLoading}>{canchaLoading ? 'Registrando...' : 'Registrar'}</button>
+            <button type="button" className="btn btn-secondary" style={{ marginLeft: '1rem' }} onClick={() => { setMostrarFormularioCancha(false); setCanchaMsg(''); setCanchaError(''); }} disabled={canchaLoading}> Cancelar</button>
+        </form>
+        {canchaMsg && <p className="success-message">{canchaMsg}</p>}
+        {canchaError && <p className="error-message">{canchaError}</p>}
+    </section>
+)}
 
       {mostrarHistorial && (
         <main className="admin-dashboard-main-content">

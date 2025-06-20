@@ -10,7 +10,7 @@ module.exports = {
 
     if (!enumExists.length) {
       await queryInterface.sequelize.query(
-        "CREATE TYPE \"enum_reservas_estadoReserva\" AS ENUM('Pendiente', 'Confirmada', 'CanceladaPorUsuario', 'CanceladaPorAdmin', 'Completada', 'NoAsistio');"
+        "CREATE TYPE \"enum_reservas_estadoReserva\" AS ENUM('Pendiente', 'Confirmada', 'CanceladaPorUsuario', 'CanceladaPorAdmin', 'Completada', 'NoAsistio', 'Archivada');"
       );
       console.log('Type enum_reservas_estadoReserva created.');
     } else {
