@@ -109,7 +109,7 @@ function ReservationHistory() {
                 }}
               >
                 <p><strong>Cancha:</strong> {r.cancha?.nombre || `ID ${r.canchaId}`}</p>
-                <p><strong>Fecha:</strong> {new Date(r.fecha).toLocaleDateString('es-CL')}</p>
+                <p><strong>Fecha:</strong> {r.fecha}</p>
                 <p><strong>Hora:</strong> {r.horaInicio}</p>
                 <p><strong>Estado:</strong> {r.estadoReserva}</p>
                 

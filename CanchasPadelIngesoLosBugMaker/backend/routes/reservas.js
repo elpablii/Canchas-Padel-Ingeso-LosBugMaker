@@ -4,6 +4,7 @@ const moment = require('moment-timezone');
 const { Op } = require('sequelize');
 const { verificarToken } = require('../middleware/auth');
 const { Reserva, User, Cancha, Jugador, Equipamiento, sequelize } = require('../models');
+const { devolverStockDeReserva } = require('../utils/inventarioUtils'); 
 
 const { enviarEmailConfirmacion } = require('../services/emailService');
 const TIMEZONE = 'America/Santiago';
@@ -60,12 +61,11 @@ router.put('/:id/cancelar', async (req, res) => {
         const { id } = req.params;
         
         // --- 1. OBTENER LA RESERVA Y SU EQUIPAMIENTO ASOCIADO ---
-        // Usamos 'include' para traer la información del equipamiento arrendado en una sola consulta.
         const reserva = await Reserva.findByPk(id, {
             include: [{
                 model: Equipamiento,
-                as: 'equipamientosRentados', // El alias que definimos en la asociación
-                through: { attributes: ['cantidad'] } // Nos aseguramos de traer la cantidad de la tabla intermedia
+                as: 'equipamientosRentados', 
+                through: { attributes: ['cantidad'] } 
             }],
             transaction
         });
@@ -88,15 +88,7 @@ router.put('/:id/cancelar', async (req, res) => {
             return res.status(403).json({ message: 'No se puede cancelar una reserva con menos de 1 semana de anticipación.' });
         }
 
-        // --- 3. DEVOLUCIÓN DE STOCK DEL EQUIPAMIENTO ---
-        if (reserva.equipamientosRentados && reserva.equipamientosRentados.length > 0) {
-            console.log('Devolviendo stock de equipamiento al inventario...');
-            for (const equipo of reserva.equipamientosRentados) {
-                // 'equipo.ReservaEquipamiento.cantidad' nos da la cantidad que se arrendó
-                const cantidadADevolver = equipo.ReservaEquipamiento.cantidad;
-                await equipo.increment('stock', { by: cantidadADevolver, transaction });
-            }
-        }
+        await devolverStockDeReserva(id, transaction);
 
         // Reembolso de saldo
         const usuario = await User.findByPk(reserva.userRut, { transaction });
@@ -202,9 +194,27 @@ router.post('/', [verificarToken], async (req, res) => {
         }
         const horaLimiteInicio = reservaFechaMoment.clone().hour(8).minute(0);
         const horaLimiteFin = reservaFechaMoment.clone().hour(20).minute(0);
+
         if (reservaHoraInicioMoment.isBefore(horaLimiteInicio) || reservaHoraTerminoMoment.isAfter(horaLimiteFin)) {
             return res.status(400).json({ message: 'Las reservas solo pueden ser entre las 08:00 y las 20:00 hrs.' });
         }
+
+        if (reservaHoraTerminoMoment.isSameOrBefore(reservaHoraInicioMoment)) {
+            return res.status(400).json({ message: 'La hora de término debe ser posterior a la hora de inicio.' });
+        }
+
+        if (duracionMinutos <= 0 || duracionMinutos % 30 !== 0) {
+            return res.status(400).json({ message: 'La duración de la reserva debe ser en bloques de 30 minutos (ej: 30, 60, 90 min).' });
+        }
+
+        const minutosDesdeApertura = reservaHoraInicioMoment.diff(horaLimiteInicio, 'minutes');
+        
+        if (minutosDesdeApertura < 0 || minutosDesdeApertura % 30 !== 0) {
+            return res.status(400).json({
+                message: `La hora de inicio '${horaInicio}' no es válida. Los horas deben ser redondas ej: 8:00 o 9:30`
+            });
+        }
+
         const diaSemana = reservaFechaMoment.day();
         if (diaSemana < 1 || diaSemana > 5) {
             return res.status(400).json({ message: 'Las reservas solo se pueden realizar de Lunes a Viernes.' });
@@ -235,7 +245,7 @@ router.post('/', [verificarToken], async (req, res) => {
         const todasLasReservasDelDia = await Reserva.findAll({
             where: {
                 fecha,
-                estadoReserva: { [Op.notIn]: ['CanceladaPorUsuario','CanceladaPorAdmin', 'NoAsistio'] }
+                estadoReserva: { [Op.notIn]: ['CanceladaPorUsuario','CanceladaPorAdmin', 'NoAsistio', 'Archivada'] }
             },
             order: [['horaInicio', 'ASC']],
             transaction

@@ -1,0 +1,189 @@
+/* --- ESTILOS GENERALES DEL CONTENEDOR --- */
+.admin-inventario-container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.admin-inventario-container h2 {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+}
+
+.admin-inventario-container h3 {
+  color: #34495e;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid #ecf0f1;
+  padding-bottom: 0.5rem;
+}
+
+/* --- FORMULARIO EN LÍNEA --- */
+.inventario-form-inline {
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.inventario-form-inline .form-controls-inline {
+  display: flex;
+  flex-wrap: wrap; /* Permite que los elementos pasen a la siguiente línea en pantallas pequeñas */
+  gap: 15px;
+  align-items: flex-end; /* Alinea los elementos en la parte inferior para que los botones queden bien */
+}
+
+.inventario-form-inline input,
+.inventario-form-inline select,
+.inventario-form-inline button {
+  padding: 10px;
+  border: 1px solid #bdc3c7;
+  border-radius: 5px;
+  font-size: 1rem;
+  height: 40px; /* Altura consistente */
+  box-sizing: border-box;
+}
+
+/* Distribución de espacio para los inputs */
+.inventario-form-inline input[name="nombre"] { flex: 3 1 180px; }
+.inventario-form-inline select[name="tipo"] { flex: 2 1 150px; }
+.inventario-form-inline input[name="stock"] { flex: 1 1 80px; }
+.inventario-form-inline input[name="costo"] { flex: 1 1 80px; }
+
+/* --- BOTONES --- */
+.inventario-form-inline button {
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.inventario-form-inline button[type="submit"] {
+  background-color: #2980b9; /* Azul */
+}
+
+.inventario-form-inline button[type="submit"]:hover {
+  background-color: #3498db;
+}
+
+.inventario-form-inline button[type="button"] {
+  background-color: #7f8c8d; /* Gris */
+}
+
+.inventario-form-inline button[type="button"]:hover {
+  background-color: #95a5a6;
+}
+
+.inventario-form-inline button:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* --- MENSAJES DE ERROR Y ÉXITO --- */
+.error-message, .success-message {
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 5px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.error-message {
+  background-color: #fbe2e2;
+  color: #c0392b;
+  border: 1px solid #e74c3c;
+}
+
+.success-message {
+  background-color: #e2fbe8;
+  color: #27ae60;
+  border: 1px solid #2ecc71;
+}
+
+
+/* --- TABLA DE INVENTARIO --- */
+.inventario-table-container {
+  margin-top: 2rem;
+  overflow-x: auto; /* Permite scroll horizontal en pantallas muy pequeñas */
+}
+
+.inventario-table-container table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.inventario-table-container th,
+.inventario-table-container td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.inventario-table-container thead th {
+  background-color: #f5f7fa;
+  color: #34495e;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+}
+
+.inventario-table-container tbody tr:hover {
+  background-color: #f9f9f9;
+}
+
+/* Botones dentro de la tabla */
+.inventario-table-container td button {
+  padding: 6px 12px;
+  margin-right: 5px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.inventario-table-container td button:first-of-type {
+  background-color: #ecf0f1;
+  color: #2c3e50;
+}
+
+.inventario-table-container td button:first-of-type:hover {
+  background-color: #bdc3c7;
+}
+
+.inventario-table-container .btn-delete {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.inventario-table-container .btn-delete:hover {
+  background-color: #c0392b;
+}
+
+/* Este es el selector más importante. Le dice al contenedor que alinee a sus hijos en una fila. */
+.inventario-form .form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: flex-end; 
+}
+
+/* Esta regla define cada "caja" de etiqueta+input */
+.inventario-form .form-group {
+  display: flex;
+  flex-direction: column; /* Pone la etiqueta encima del input */
+}
+
+/* Esta regla le da un tamaño flexible a cada grupo */
+.inventario-form .form-group {
+  flex: 1 1 150px; 
+}
+
+/* Hacemos que el campo de nombre sea un poco más grande */
+.inventario-form .form-group:first-child {
+  flex: 2 1 200px; 
+}

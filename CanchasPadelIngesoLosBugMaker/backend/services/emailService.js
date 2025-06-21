@@ -30,7 +30,7 @@ const enviarEmailConfirmacion = async (usuario, reserva, cancha) => {
           <li><strong>Fecha:</strong> ${new Date(reserva.fecha).toLocaleDateString('es-CL')}</li>
           <li><strong>Horario:</strong> ${reserva.horaInicio} - ${reserva.horaTermino}</li>
           <li><strong>Requiere Equipamiento:</strong> ${reserva.requiereEquipamiento ? 'Sí' : 'No'}</li>
-          <li><strong>Costo Equipamiento:</strong> $${reserva.costoEquipamiento}</li>
+          <li><strong>Total:</strong> $${reserva.costoTotalReserva}</li>
         </ul>
         
         <a href="${urlHistorial}" style="display: inline-block; padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px;">

@@ -137,3 +137,100 @@
 .admin-logout-button:hover {
   background-color: #a93226;
 }
+
+
+.table-scroll-container {
+  width: 100%;
+  overflow-x: auto; 
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.reservations-table {
+  min-width: 1200px; 
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.reservations-table .actions-cell {
+  white-space: nowrap;
+}
+
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: white;
+  text-transform: capitalize;
+}
+
+.status-pendient, .status-canceladaporusuario { background-color: #f39c12; } 
+.status-confirmada, .status-completada { background-color: #2ecc71; } 
+.status-canceladaporadmin, .status-noasistio { background-color: #e74c3c; } 
+.status-archivada { background-color: #95a5a6; }
+
+
+.reservations-table .btn-confirm {
+  background-color: #27ae60; 
+  color: white;
+  border: 1px solid #27ae60;
+}
+.reservations-table .btn-confirm:hover {
+  background-color: #2ecc71;
+}
+
+.reservations-table .btn-cancel {
+  background-color: #c0392b; 
+  color: white;
+  border: 1px solid #c0392b;
+}
+.reservations-table .btn-cancel:hover {
+  background-color: #e74c3c;
+}
+
+.reservations-table .btn-desbloquear {
+  background-color: #ecf0f1;
+  color: #34495e; 
+  border: 1px solid #bdc3c7;
+}
+.reservations-table .btn-desbloquear:hover {
+  background-color: #bdc3c7;
+}
+.dual-scroll-wrapper {
+  width: 100%;
+}
+
+.top-scroll-dummy {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 20px;
+}
+
+.top-scroll-dummy .scroll-dummy-content {
+  width: 1200px; 
+  height: 1px;
+}
+
+.top-scroll-dummy::-webkit-scrollbar {
+  height: 0;
+}
+.top-scroll-dummy {
+  -ms-overflow-style: none;  
+  scrollbar-width: none;  
+}
+
+.table-scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.reservations-table {
+  min-width: 1200px;
+  width: 100%;
+  border-collapse: collapse;
+}

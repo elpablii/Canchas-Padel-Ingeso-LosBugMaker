@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import './Inventario.css';
 
 function AdminInventario() {
   const { token } = useAuth(); // Para autenticar las peticiones
@@ -129,23 +130,47 @@ function AdminInventario() {
     <div className="admin-inventario-container">
       <h2>Gestionar Inventario de Equipamiento</h2>
 
-      {/* --- FORMULARIO PARA AÑADIR/EDITAR --- */}
-      <form onSubmit={handleSubmit} className="inventario-form">
-        <h3>{formData.id ? 'Editando Artículo' : 'Añadir Nuevo Artículo'}</h3>
-        <input type="text" name="nombre" placeholder="Nombre del artículo" value={formData.nombre} onChange={handleChange} required />
-        <select name="tipo" value={formData.tipo} onChange={handleChange}>
-          <option value="Pala de Padel">Pala de Padel</option>
-          <option value="Pelotas de Padel">Pelotas de Padel</option>
-          <option value="Equipamento de Pista">Equipamento de Pista</option>
-          <option value="Calzado">Calzado</option>
-        </select>
-        <input type="number" name="stock" placeholder="Stock" value={formData.stock} onChange={handleChange} required min="0" />
-        <input type="number" name="costo" placeholder="Costo de arriendo" value={formData.costo} onChange={handleChange} required min="0" step="0.01" />
-        <div className="form-actions">
-            <button type="submit" disabled={loading}>{loading ? 'Guardando...' : 'Guardar Artículo'}</button>
-            {formData.id && <button type="button" onClick={resetFormulario}>Cancelar Edición</button>}
+{/* --- FORMULARIO PARA AÑADIR/EDITAR --- */}
+<form onSubmit={handleSubmit} className="inventario-form">
+    <h3>{formData.id ? 'Editando Artículo' : 'Añadir Nuevo Artículo'}</h3>
+
+    {/* ESTE ES EL CONTENEDOR CLAVE */}
+    <div className="form-row">
+
+        {/* Grupo 1: Nombre */}
+        <div className="form-group">
+            <label htmlFor="nombre">Nombre del artículo</label>
+            <input id="nombre" name="nombre" /* ...otros props... */ />
         </div>
-      </form>
+
+        {/* Grupo 2: Tipo */}
+        <div className="form-group">
+            <label htmlFor="tipo">Tipo de artículo</label>
+            <select id="tipo" name="tipo" /* ...otros props... */ >
+                {/* ... opciones ... */}
+            </select>
+        </div>
+
+        {/* Grupo 3: Stock */}
+        <div className="form-group">
+            <label htmlFor="stock">Stock</label>
+            <input id="stock" name="stock" type="number" /* ...otros props... */ />
+        </div>
+
+        {/* Grupo 4: Costo */}
+        <div className="form-group">
+            <label htmlFor="costo">Costo</label>
+            <input id="costo" name="costo" type="number" /* ...otros props... */ />
+        </div>
+
+        {/* Grupo 5: Botones */}
+        <div className="form-actions">
+            <button type="submit" /* ... */ >Guardar Artículo</button>
+            {/* ... otro botón si aplica ... */}
+        </div>
+
+    </div>
+</form>
 
       {error && <p className="error-message">{error}</p>}
       {mensaje && <p className="success-message">{mensaje}</p>}
@@ -157,7 +182,6 @@ function AdminInventario() {
         <table>
           <thead>
             <tr>
-              <th>ID</th>
               <th>Nombre</th>
               <th>Tipo</th>
               <th>Stock</th>
@@ -168,7 +192,6 @@ function AdminInventario() {
           <tbody>
             {inventario.map(item => (
               <tr key={item.id}>
-                <td>{item.id}</td>
                 <td>{item.nombre}</td>
                 <td>{item.tipo}</td>
                 <td>{item.stock}</td>

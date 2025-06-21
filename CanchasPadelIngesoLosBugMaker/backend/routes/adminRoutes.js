@@ -3,10 +3,23 @@ const router = express.Router();
 const { Reserva, User, Cancha, Jugador, Equipamiento, sequelize } = require('../models'); 
 const { notificarATodos } = require('../services/notificacionService');
 const moment = require('moment-timezone');
-// --- CORRECCIÓN: Se usan solo los middlewares necesarios y estándar ---
+const { devolverStockDeReserva } = require('../utils/inventarioUtils'); 
 const { verificarToken, verificarAdmin } = require('../middleware/auth');
 const { Op } = require('sequelize');
 const { enviarEmailConfirmacion } = require('../services/emailService');
+const TIMEZONE = 'America/Santiago';
+
+
+const validarRutChileno = (rutCompleto) => {
+    if (!/^[0-9]+-[0-9kK]{1}$/.test(rutCompleto)) return false;
+    const [rutNum, dv] = rutCompleto.split('-');
+    let M = 0, S = 1;
+    for (let i = rutNum.length - 1; i >= 0; i--) {
+        S = (S + parseInt(rutNum.charAt(i)) * (9 - M++ % 6)) % 11;
+    }
+    const dvCalculado = S ? (S - 1).toString() : 'k';
+    return dvCalculado === dv.toLowerCase();
+};
 
 // Se elimina el router.use() global para aplicar la seguridad explícitamente en cada ruta.
 
@@ -16,19 +29,38 @@ const { enviarEmailConfirmacion } = require('../services/emailService');
  * @access  Private (Admin)
  */
 router.get('/reservas', [verificarToken, verificarAdmin], async (req, res) => {
-  try {
-    const todasLasReservas = await Reserva.findAll({
-      include: [ 
-        { model: User, as: 'usuario', attributes: ['rut', 'nombre', 'email', 'saldo'] },
-        { model: Cancha, as: 'cancha', attributes: ['id', 'nombre', 'costo'] }
-      ],
-      order: [['fechaReserva', 'DESC'], ['horaInicio', 'DESC']] 
-    });
-    res.status(200).json(todasLasReservas);
-  } catch (error) {
-    console.error('Error en GET /api/admin/reservas:', error);
-    res.status(500).json({ message: 'Error interno del servidor.' });
-  }
+    try {
+        const historialReservas = await Reserva.findAll({
+            include: [
+                {
+                    model: Cancha,
+                    as: 'cancha',
+                    attributes: ['nombre']
+                },
+                {
+                    model: User,
+                    as: 'usuario',
+                    attributes: ['nombre', 'email']
+                },
+                {
+                    model: Equipamiento,
+                    as: 'equipamientosRentados',
+                    attributes: ['nombre'],
+                    through: {
+                        attributes: ['cantidad'] 
+                    }
+                }
+            ],
+            
+            order: [['createdAt', 'DESC']]
+        });
+
+        res.status(200).json(historialReservas);
+
+    } catch (error) {
+        console.error("Error al obtener el historial de reservas:", error);
+        res.status(500).json({ message: "Error interno del servidor al obtener el historial." });
+    }
 });
 
 
@@ -193,14 +225,58 @@ router.delete('/reservas/:id', [verificarToken, verificarAdmin], async (req, res
 });
 
 router.post('/reservas', [verificarToken, verificarAdmin], async (req, res) => {
-    const { canchaId, fecha, horaInicio, horaTermino, requiereEquipamiento, userRut, jugadores } = req.body;
+    // Obtener los datos del body
+    const { canchaId, fecha, horaInicio, horaTermino, userRut, jugadores, equipamientos } = req.body;
 
-    if (!userRut) {
-        return res.status(400).json({ message: 'Se debe especificar el RUT del usuario para la reserva.' });
+    // VALIDACIONES DE ENTRADA 
+    if (!canchaId || !fecha || !horaInicio || !horaTermino || !userRut || !jugadores) {
+        return res.status(400).json({ message: 'Faltan campos obligatorios para la reserva.' });
+    }
+
+    // Validación de Jugadores (RUT y Edad)
+    for (const jugador of jugadores) {
+        if (!jugador.rut || !validarRutChileno(jugador.rut)) {
+            return res.status(400).json({ message: `El RUT '${jugador.rut || ''}' de uno de los jugadores no es válido.` });
+        }
+        if (!jugador.edad || parseInt(jugador.edad) < 14 || parseInt(jugador.edad) > 130) {
+            return res.status(400).json({ message: `Todos los jugadores deben tener al menos 14 años. Verifique la edad para el RUT ${jugador.rut}.` });
+        }
+    }
+
+    const reservaFechaMoment = moment.tz(fecha, 'YYYY-MM-DD', TIMEZONE).startOf('day');
+    const reservaHoraInicioMoment = moment.tz(`${fecha} ${horaInicio}`, 'YYYY-MM-DD HH:mm', TIMEZONE);
+    const reservaHoraTerminoMoment = moment.tz(`${fecha} ${horaTermino}`, 'YYYY-MM-DD HH:mm', TIMEZONE);
+    const duracionMinutos = reservaHoraTerminoMoment.diff(reservaHoraInicioMoment, 'minutes');
+
+    if (duracionMinutos < 90 || duracionMinutos > 180) {
+             return res.status(400).json({ message: `La duración de la reserva debe ser entre 90 y 180 minutos.` });
+        }
+
+    if (reservaHoraTerminoMoment.isSameOrBefore(reservaHoraInicioMoment)) {
+            return res.status(400).json({ message: 'La hora de término debe ser posterior a la hora de inicio.' });
+    }
+    const horaLimiteInicio = reservaFechaMoment.clone().hour(8).minute(0);
+    const horaLimiteFin = reservaFechaMoment.clone().hour(20).minute(0);
+
+    if (reservaHoraInicioMoment.isBefore(horaLimiteInicio) || reservaHoraTerminoMoment.isAfter(horaLimiteFin)) {
+        return res.status(400).json({ message: 'Las reservas solo pueden ser entre las 08:00 y las 20:00 hrs.' });
+    }
+
+    if (duracionMinutos <= 0 || duracionMinutos % 30 !== 0) {
+        return res.status(400).json({ message: 'La duración de la reserva debe ser en bloques de 30 minutos (ej: 30, 60, 90 min).' });
+    }
+
+    const minutosDesdeApertura = reservaHoraInicioMoment.diff(horaLimiteInicio, 'minutes');
+    
+    if (minutosDesdeApertura < 0 || minutosDesdeApertura % 30 !== 0) {
+        return res.status(400).json({
+            message: `La hora de inicio '${horaInicio}' no es válida. Los horarios deben ser "en punto" o "hora y 30" desde las 8:00.`
+        });
     }
 
     const transaction = await sequelize.transaction();
     try {
+        // OBTENER DATOS DE LA BD 
         const cancha = await Cancha.findByPk(canchaId, { transaction });
         const user = await User.findByPk(userRut, { transaction });
 
@@ -208,41 +284,112 @@ router.post('/reservas', [verificarToken, verificarAdmin], async (req, res) => {
             await transaction.rollback();
             return res.status(404).json({ message: 'El usuario o la cancha especificada no existen.' });
         }
+        const conflicto = await Reserva.findOne({
+            where: {
+                canchaId: canchaId,
+                fecha: fecha,
+                estadoReserva: {
+                    [Op.in]: ['Pendiente', 'Confirmada', 'CanceladaPorAdmin']
+                },
 
+                horaInicio: {
+                    [Op.lt]: horaTermino 
+                },
+                horaTermino: {
+                    [Op.gt]: horaInicio
+                }
+            },
+            transaction
+        });
+
+        if (conflicto) {
+            await transaction.rollback();
+            return res.status(409).json({ 
+                message: `El horario de ${horaInicio} a ${horaTermino} en la cancha '${cancha.nombre}' ya está ocupado por otra reserva (Estado: ${conflicto.estadoReserva}).`
+            });
+        }
+
+        // LÓGICA DE EQUIPAMIENTO 
+        let costoEquipamientoTotal = 0;
+        if (equipamientos && equipamientos.length > 0) {
+            for (const item of equipamientos) {
+                const equipoEnDB = await Equipamiento.findByPk(item.id, { transaction });
+
+                if (!equipoEnDB) {
+                    throw new Error(`El artículo de equipamiento con ID ${item.id} no fue encontrado.`);
+                }
+                if (equipoEnDB.stock < item.cantidad) {
+                    throw new Error(`Stock insuficiente para '${equipoEnDB.nombre}'. Solicitado: ${item.cantidad}, Disponible: ${equipoEnDB.stock}.`);
+                }
+                costoEquipamientoTotal += equipoEnDB.costo * item.cantidad;
+            }
+        }
+        
+        // CÁLCULO DE COSTO Y VERIFICACIÓN DE SALDO 
         const duracionMinutos = moment.duration(moment(horaTermino, 'HH:mm').diff(moment(horaInicio, 'HH:mm'))).asMinutes();
-        const costoTotal = ((duracionMinutos / 60) * 15000) + (requiereEquipamiento ? 5000 : 0);
+        const costoCancha = (duracionMinutos / 60) * cancha.costo; // Usar el costo de la cancha desde la BD
+        const costoTotal = costoCancha + costoEquipamientoTotal;
 
         if (user.saldo < costoTotal) {
             await transaction.rollback();
-            return res.status(402).json({ message: `El usuario no tiene saldo suficiente.` });
+            return res.status(402).json({ message: `El usuario no tiene saldo suficiente. Saldo: ${user.saldo}, Requerido: ${costoTotal}` });
         }
 
+        // 6. OPERACIONES DE ESCRITURA EN LA BD 
+        // Decrementar saldo del usuario
         await user.decrement('saldo', { by: costoTotal, transaction });
 
+        // Decrementar stock de equipamiento
+        if (equipamientos && equipamientos.length > 0) {
+            for (const item of equipamientos) {
+                await Equipamiento.decrement('stock', { by: item.cantidad, where: { id: item.id }, transaction });
+            }
+        }
+
+        // Crear la reserva
         const nuevaReserva = await Reserva.create({
-            canchaId, userRut, fecha, horaInicio, horaTermino, requiereEquipamiento,
-            costoEquipamiento: requiereEquipamiento ? 5000 : 0,
+            canchaId,
+            userRut,
+            fecha,
+            horaInicio,
+            horaTermino,
+            requiereEquipamiento: costoEquipamientoTotal > 0, 
+            costoEquipamiento: costoEquipamientoTotal,
             costoTotalReserva: costoTotal,
-            estadoReserva: 'Confirmada' 
+            estadoReserva: 'Pendiente'
         }, { transaction });
 
+        // Asociar equipamiento rentado con la reserva
+        if (equipamientos && equipamientos.length > 0) {
+            for (const item of equipamientos) {
+                await nuevaReserva.addEquipamientosRentado(item.id, { 
+                    through: { cantidad: item.cantidad }, 
+                    transaction 
+                });
+            }
+        }
+
+        // Crear los registros de jugadores
         if (jugadores && jugadores.length > 0) {
             const jugadoresParaCrear = jugadores.map(jugador => ({ ...jugador, reservaId: nuevaReserva.id }));
             await Jugador.bulkCreate(jugadoresParaCrear, { transaction });
         }
 
+        // FINALIZAR 
         await transaction.commit();
+
         try {
             await enviarEmailConfirmacion(user, nuevaReserva, cancha);
         } catch (emailError) {
             console.error('El correo de confirmación no se pudo enviar, pero la reserva fue exitosa.', emailError);
         }
+
         res.status(201).json({ message: 'Reserva creada exitosamente por el administrador.', reserva: nuevaReserva });
 
     } catch (error) {
         if (transaction) await transaction.rollback();
         console.error('Error del admin al crear reserva:', error);
-        res.status(500).json({ message: 'Error interno al crear la reserva.' });
+        res.status(500).json({ message: error.message || 'Error interno al crear la reserva.' });
     }
 });
 
@@ -264,6 +411,8 @@ router.put('/reservas/:id/cancelar', [verificarToken, verificarAdmin], async (re
 
         reserva.estadoReserva = 'CanceladaPorAdmin';
         await reserva.save({ transaction });
+
+        await devolverStockDeReserva(id, transaction);
         
         const usuario = await User.findByPk(reserva.userRut, { transaction });
         if (usuario && reserva.costoTotalReserva > 0) {
@@ -330,17 +479,27 @@ router.post('/equipamiento', [verificarToken, verificarAdmin], async (req, res) 
             return res.status(400).json({ message: 'Nombre, tipo, stock y costo son requeridos.' });
         }
         
+        const stockNum = Number(stock);
+        if (isNaN(stockNum) || stockNum <= 0) {
+            return res.status(400).json({ message: 'El stock debe ser un número mayor que 0.' });
+        }
+
         const nombreEstandarizado = nombre.trim().toUpperCase();
 
         const nuevoArticulo = await Equipamiento.create({ 
-            nombre: nombreEstandarizado, // Se usa el nombre estandarizado
+            nombre: nombreEstandarizado,
             tipo, 
-            stock, 
+            stock: stockNum, // Usamos la variable numérica
             costo 
         });
         
         res.status(201).json(nuevoArticulo);
     } catch (error) {
+
+        if (error.name === 'SequelizeValidationError') {
+            const mensajes = error.errors.map(err => err.message);
+            return res.status(400).json({ message: 'Error de validación', errors: mensajes });
+        }
         if (error.name === 'SequelizeUniqueConstraintError') {
             return res.status(409).json({ message: 'Ya existe un artículo con ese nombre.' });
         }
@@ -363,14 +522,27 @@ router.put('/equipamiento/:id', [verificarToken, verificarAdmin], async (req, re
             return res.status(404).json({ message: 'Artículo de equipamiento no encontrado.' });
         }
 
+        // --- VALIDACIÓN AÑADIDA TAMBIÉN AQUÍ ---
+        if (stock !== undefined) {
+            const stockNum = Number(stock);
+            if (isNaN(stockNum) || stockNum <= 0) {
+                return res.status(400).json({ message: 'El stock debe ser un número mayor que 0.' });
+            }
+            articulo.stock = stockNum;
+        }
+
         articulo.nombre = nombre || articulo.nombre;
         articulo.tipo = tipo || articulo.tipo;
-        articulo.stock = stock !== undefined ? stock : articulo.stock;
         articulo.costo = costo !== undefined ? costo : articulo.costo;
         
-        await articulo.save();
+        await articulo.save(); 
         res.status(200).json(articulo);
     } catch (error) {
+
+        if (error.name === 'SequelizeValidationError') {
+            const mensajes = error.errors.map(err => err.message);
+            return res.status(400).json({ message: 'Error de validación', errors: mensajes });
+        }
         console.error('Error al actualizar equipamiento:', error);
         res.status(500).json({ message: 'Error interno al actualizar el artículo.' });
     }

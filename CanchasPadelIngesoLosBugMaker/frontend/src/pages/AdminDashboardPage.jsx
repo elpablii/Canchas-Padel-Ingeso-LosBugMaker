@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; 
 import { useAuth } from '../context/AuthContext.jsx';
 import AdminDisponibilidad from '../components/AdminDisponibilidad.jsx';
 import ReportePagosPage from './ReportePagosPage.jsx'; 
@@ -8,6 +8,9 @@ import './AdminDashboardPage.css';
 function AdminDashboardPage() {
   const { user, logout, token } = useAuth();
   
+  const topScrollRef = useRef(null);
+  const bottomScrollRef = useRef(null);
+
   // --- ESTADOS PARA CONTROLAR LA VISIBILIDAD DE CADA SECCIÓN ---
   const [mostrarFormularioCancha, setMostrarFormularioCancha] = useState(false);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
@@ -124,6 +127,28 @@ function AdminDashboardPage() {
     }
   }, [selectedDate, mostrarCrearReserva, token]);
 
+  useEffect(() => {
+        const topDiv = topScrollRef.current;
+        const bottomDiv = bottomScrollRef.current;
+
+        if (!topDiv || !bottomDiv) return;
+
+        const syncTopScroll = () => {
+            topDiv.scrollLeft = bottomDiv.scrollLeft;
+        };
+        const syncBottomScroll = () => {
+            bottomDiv.scrollLeft = topDiv.scrollLeft;
+        };
+
+        bottomDiv.addEventListener('scroll', syncTopScroll);
+        topDiv.addEventListener('scroll', syncBottomScroll);
+
+        return () => {
+            bottomDiv.removeEventListener('scroll', syncTopScroll);
+            topDiv.removeEventListener('scroll', syncBottomScroll);
+        };
+    }, [reservations]);
+
   const handleAddJugador = () => setJugadores([...jugadores, { nombre: '', apellido: '', rut: '', edad: '' }]);
   const handleRemoveJugador = (index) => setJugadores(jugadores.filter((_, i) => i !== index));
   const handleJugadorChange = (e, index) => {
@@ -206,9 +231,6 @@ function AdminDashboardPage() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            // --- CAMBIO CLAVE AQUÍ ---
-            // Añadimos maxJugadores al objeto que se envía.
-            // Usamos el nombre de la variable directamente porque coincide con la clave.
             body: JSON.stringify({ 
                 nombre: nombreCancha, 
                 costo: costoCancha, 
@@ -219,7 +241,6 @@ function AdminDashboardPage() {
         const data = await response.json();
 
         if (!response.ok) {
-            // El backend ahora puede enviar un array de errores
             const errorMessage = Array.isArray(data.errors) 
                 ? data.errors.join(', ') 
                 : (data.message || 'Error al registrar la cancha.');
@@ -229,7 +250,7 @@ function AdminDashboardPage() {
         setCanchaMsg('Cancha registrada exitosamente.');
         setNombreCancha('');
         setCostoCancha('');
-        setMaxJugadores('4'); // <-- AÑADIR: Reseteamos el estado nuevo también
+        setMaxJugadores('4'); 
 
         setTimeout(() => {
             setMostrarFormularioCancha(false);
@@ -242,6 +263,8 @@ function AdminDashboardPage() {
         setCanchaLoading(false);
     }
   };
+
+  
 
   const fetchReservationHistory = async () => {
     if (!token) {
@@ -428,104 +451,126 @@ function AdminDashboardPage() {
 
       
       {mostrarFormularioCancha && (
-    <section className="admin-section">
-        <form onSubmit={handleRegisterCancha} className="register-court-form">
-            <div className="form-group">
-                <label htmlFor="nombreCancha">Nombre de la cancha:</label>
-                <input id="nombreCancha" type="text" value={nombreCancha} onChange={e => setNombreCancha(e.target.value)} required minLength={2} disabled={canchaLoading} />
-            </div>
-            <div className="form-group">
-                <label htmlFor="costoCancha">Costo ($):</label>
-                <input id="costoCancha" type="number" value={costoCancha} onChange={e => setCostoCancha(e.target.value)} required min={0} step="0.01" disabled={canchaLoading} />
-            </div>
+            <section className="admin-section">
+                <form onSubmit={handleRegisterCancha} className="register-court-form">
+                    <div className="form-group">
+                        <label htmlFor="nombreCancha">Nombre de la cancha:</label>
+                        <input id="nombreCancha" type="text" value={nombreCancha} onChange={e => setNombreCancha(e.target.value)} required minLength={2} disabled={canchaLoading} />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="costoCancha">Costo ($):</label>
+                        <input id="costoCancha" type="number" value={costoCancha} onChange={e => setCostoCancha(e.target.value)} required min={0} step="0.01" disabled={canchaLoading} />
+                    </div>
 
-            <div className="form-group">
-                <label htmlFor="maxJugadores">Máximo de Jugadores:</label>
-                <input 
-                    id="maxJugadores" 
-                    type="number" 
-                    value={maxJugadores} 
-                    onChange={e => setMaxJugadores(e.target.value)} 
-                    required 
-                    min="1" 
-                    max="99" 
-                    disabled={canchaLoading} 
-                />
-            </div>
-            
-            <button type="submit" className="btn btn-primary" disabled={canchaLoading}>{canchaLoading ? 'Registrando...' : 'Registrar'}</button>
-            <button type="button" className="btn btn-secondary" style={{ marginLeft: '1rem' }} onClick={() => { setMostrarFormularioCancha(false); setCanchaMsg(''); setCanchaError(''); }} disabled={canchaLoading}> Cancelar</button>
-        </form>
-        {canchaMsg && <p className="success-message">{canchaMsg}</p>}
-        {canchaError && <p className="error-message">{canchaError}</p>}
-    </section>
-)}
+                    <div className="form-group">
+                        <label htmlFor="maxJugadores">Máximo de Jugadores:</label>
+                        <input 
+                            id="maxJugadores" 
+                            type="number" 
+                            value={maxJugadores} 
+                            onChange={e => setMaxJugadores(e.target.value)} 
+                            required 
+                            min="1" 
+                            max="99" 
+                            disabled={canchaLoading} 
+                        />
+                    </div>
+                    
+                    <button type="submit" className="btn btn-primary" disabled={canchaLoading}>{canchaLoading ? 'Registrando...' : 'Registrar'}</button>
+                    <button type="button" className="btn btn-secondary" style={{ marginLeft: '1rem' }} onClick={() => { setMostrarFormularioCancha(false); setCanchaMsg(''); setCanchaError(''); }} disabled={canchaLoading}> Cancelar</button>
+                </form>
+                {canchaMsg && <p className="success-message">{canchaMsg}</p>}
+                {canchaError && <p className="error-message">{canchaError}</p>}
+            </section>
+        )}
 
-      {mostrarHistorial && (
-        <main className="admin-dashboard-main-content">
-          {loading && <p>Cargando historial de reservas...</p>}
-          {error && <p className="error-message">{error}</p>}
-          {!loading && !error && hasFetched && (
-            <div className="reservations-history-section">
-              <h3>Historial Completo de Reservas y Bloqueos</h3>
-              {reservations.length > 0 ? (
-                <table className="reservations-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Fecha</th>
-                      <th>Horario</th>
-                      <th>Cancha</th>
-                      <th>Usuario</th>
-                      <th>Email</th>
-                      <th>Estado</th>
-                      <th>Costo Reserva</th>
-                      <th>Costo Equip.</th>
-                      <th>Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reservations.map(reserva => (
-                      <tr key={reserva.id}>
-                        <td>{reserva.id}</td>
-                        <td>{formatDate(reserva.fechaReserva || reserva.fecha)}</td>
-                        <td>{reserva.horaInicio} - {reserva.horaTermino}</td>
-                        <td>{reserva.cancha?.nombre || 'N/A'}</td>
-                        <td>{reserva.usuario?.nombre || reserva.userRut}</td>
-                        <td>{reserva.usuario?.email || 'N/A'}</td>
-                        <td>{reserva.estadoReserva}</td>
-                        <td>${reserva.cancha ? Number(reserva.cancha.costo).toLocaleString('es-CL') : 'N/A'}</td>
-                        <td>${Number(reserva.costoEquipamiento).toLocaleString('es-CL')}</td>
-                        <td>
-                          {reserva.estadoReserva === 'Pendiente' && (
-                            <button onClick={() => handleAdminConfirm(reserva.id)} className="btn-confirm">Confirmar</button>
-                          )}
-                          
-                          {['Pendiente', 'Confirmada'].includes(reserva.estadoReserva) && (
-                            <button onClick={() => handleAdminCancel(reserva.id)} className="btn-cancel">Cancelar</button>
-                          )}
-                          {reserva.estadoReserva === 'CanceladaPorAdmin' && (
-                            <button 
-                              className="btn-desbloquear"
-                              onClick={() => handleDesbloquear(reserva.id)}
-                            >
-                              Desbloquear Horario
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p>No se encontraron reservas en el sistema.</p>
-              )}
-              <button className="btn btn-secondary" style={{ marginTop: '1rem' }} onClick={() => setMostrarHistorial(false)}>Volver al Panel</button>
-            </div>
-          )}
-        </main>
-      )}
-      
+        {mostrarHistorial && (
+            <main className="admin-dashboard-main-content">
+                {loading && <p>Cargando historial de reservas...</p>}
+                {error && <p className="error-message">{error}</p>}
+                {!loading && !error && hasFetched && (
+                    <div className="reservations-history-section">
+                        <h3>Historial Completo de Reservas</h3>
+
+                        <div className="dual-scroll-wrapper">
+                            <div ref={topScrollRef} className="top-scroll-dummy">
+                                <div className="scroll-dummy-content"></div>
+                            </div>
+
+                            <div ref={bottomScrollRef} className="table-scroll-container">
+                                {reservations.length > 0 ? (
+                                    <table className="reservations-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Fecha Creación</th>
+                                                <th>Fecha Reserva</th>
+                                                <th>Horario</th>
+                                                <th>Cancha</th>
+                                                <th>Usuario</th>
+                                                <th>Email</th>
+                                                <th>Equipamiento</th>
+                                                <th>Cant.</th>
+                                                <th>Costo Total</th>
+                                                <th>Estado</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {reservations.map(reserva => (
+                                                <tr key={reserva.id}>
+                                                    <td>{new Date(reserva.createdAt).toLocaleDateString('es-CL', { timeZone: 'UTC' })}</td>
+                                                    <td>{new Date(reserva.fecha).toLocaleDateString('es-CL', { timeZone: 'UTC' })}</td>
+                                                    <td>{reserva.horaInicio.substring(0, 5)} - {reserva.horaTermino.substring(0, 5)}</td>
+                                                    <td>{reserva.cancha?.nombre || 'N/A'}</td>
+                                                    <td>{reserva.usuario?.nombre || reserva.userRut}</td>
+                                                    <td>{reserva.usuario?.email || 'N/A'}</td>
+                                                    <td>
+                                                        {reserva.equipamientosRentados?.length > 0
+                                                            ? reserva.equipamientosRentados.map(eq => eq.nombre).join(', ')
+                                                            : 'Ninguno'
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        {reserva.equipamientosRentados?.length > 0
+                                                            ? reserva.equipamientosRentados.map(eq => eq.ReservaEquipamiento.cantidad).join(', ')
+                                                            : '0'
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        {Number(reserva.costoTotalReserva).toLocaleString('es-CL', { style: 'currency', currency: 'CLP' })}
+                                                    </td>
+                                                    <td>
+                                                        <span className={`status-badge status-${reserva.estadoReserva.toLowerCase()}`}>
+                                                            {reserva.estadoReserva}
+                                                        </span>
+                                                    </td>
+                                                    <td className="actions-cell">
+                                                        {reserva.estadoReserva === 'Pendiente' && (
+                                                            <button onClick={() => handleAdminConfirm(reserva.id)} className="btn-confirm">Confirmar</button>
+                                                        )}
+                                                        {['Pendiente', 'Confirmada'].includes(reserva.estadoReserva) && (
+                                                            <button onClick={() => handleAdminCancel(reserva.id)} className="btn-cancel">Cancelar</button>
+                                                        )}
+                                                        {reserva.estadoReserva === 'CanceladaPorAdmin' && (
+                                                            <button onClick={() => handleDesbloquear(reserva.id)} className="btn-desbloquear">Desbloquear</button>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <p>No se encontraron reservas en el sistema.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <button className="btn btn-secondary" style={{ marginTop: '1rem' }} onClick={() => setMostrarHistorial(false)}>Volver al Panel</button>
+                    </div>
+                )}
+            </main>
+        )}
+              
       {mostrarGestionDisponibilidad && (
         <section className="admin-section">
           <AdminDisponibilidad token={token} />
