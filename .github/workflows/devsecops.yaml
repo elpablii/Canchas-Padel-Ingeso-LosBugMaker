@@ -1,0 +1,77 @@
+// ...existing code...
+name: Mi Pipeline DevSecOps
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  analisis-de-seguridad:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java (necesario para SonarScanner y Dependency-Check)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Configurar Node.js (para proyectos JS/Node)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # SAST: SonarQube Community Edition (requiere SONAR_HOST_URL y SONAR_TOKEN en Secrets)
+      - name: Ejecutar SonarScanner (SonarQube)
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -e
+          sudo apt-get update -y
+          sudo apt-get install -y unzip wget
+          # Descargar SonarScanner CLI
+          SCANNER_ZIP=sonar-scanner-cli-4.8.0.2856-linux.zip
+          wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/${SCANNER_ZIP}
+          unzip -q ${SCANNER_ZIP} -d sonar-scanner
+          export PATH="$PWD/sonar-scanner/sonar-scanner-*/bin:$PATH"
+          # Ejecutar análisis (ajustar projectKey/branch si es necesario)
+          sonar-scanner \
+            -Dsonar.projectKey=CanchasPadelIngesoLosBugMaker \
+            -Dsonar.sources=. \
+            -Dsonar.host.url="$SONAR_HOST_URL" \
+            -Dsonar.login="$SONAR_TOKEN"
+
+      # SCA: OWASP Dependency-Check usando la imagen Docker oficial
+      - name: Ejecutar OWASP Dependency-Check (SCA)
+        run: |
+          set -e
+          # Ejecuta Dependency-Check y guarda reporte JSON en el workspace
+          docker run --rm -v "${{ github.workspace }}:/src" owasp/dependency-check:8 \
+            --project "CanchasPadelIngesoLosBugMaker" --scan /src --format "JSON" --out /src/dependency-check-report
+          ls -lah dependency-check-report*
+
+      # Secret scanning: Gitleaks
+      - name: Ejecutar Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: detect --source . --no-git --report-path gitleaks-report.json
+
+      # Publicar los artefactos de reporte para revisión (opcional)
+      - name: Subir reportes como artefactos
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            gitleaks-report.json
+            dependency-check-report
+            dependency-check-report.json
+            sonar-report* || true
+// ...existing code...
+{ changed code }
+// ...existing code...
